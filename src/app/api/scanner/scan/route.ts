@@ -1,8 +1,8 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { openai } from '@/lib/openai';
 import { findOrCreateCard } from '@/lib/card-catalog';
 import { lookupPSACert } from '@/lib/cert-lookup/psa';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
+import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
 import { createServiceClient } from '@/lib/supabase';
 import { inferConfidence, parseScannerOcrResponse } from '@/lib/scanner-ocr';
 import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
@@ -77,6 +77,66 @@ async function uploadScanImage(userId: string, imageFile: File) {
 
   const { data } = supabase.storage.from('card-images').getPublicUrl(path);
   return data.publicUrl;
+}
+
+async function callSlabOcr(imageUrl: string) {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured.');
+  }
+
+  const prompt =
+    'This is a photo of a graded sports card in a protective case (slab). Look at the label on the slab and extract: (1) the certification number (cert number) — usually a 7-9 digit number, (2) the grading company — one of PSA, BGS, SGC, or CGC. Return ONLY a JSON object: { certNumber: string | null, gradingCompany: \'PSA\' | \'BGS\' | \'SGC\' | \'CGC\' | \'UNKNOWN\' } If you cannot read the cert number clearly, return certNumber as null.';
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      input: [
+        {
+          role: 'user',
+          content: [
+            { type: 'input_text', text: prompt },
+            {
+              type: 'input_image',
+              image_url: imageUrl,
+              detail: 'high',
+            },
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'slab_ocr',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              certNumber: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+              gradingCompany: {
+                type: 'string',
+                enum: ['PSA', 'BGS', 'SGC', 'CGC', 'UNKNOWN'],
+              },
+            },
+            required: ['certNumber', 'gradingCompany'],
+          },
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI Responses API returned ${response.status}: ${await response.text()}`);
+  }
+
+  return response.json();
 }
 
 type ScanRowPayload = Partial<ScannerResult> & {
@@ -180,54 +240,28 @@ export async function POST(req: Request) {
   const fallbackImageUrl = typeof imageUrlFromClient === 'string' && imageUrlFromClient.trim() ? imageUrlFromClient.trim() : '';
 
   let uploadedImageUrl = fallbackImageUrl || '';
+  let openAiImageUrl = fallbackImageUrl || '';
   let ocrCertNumber: string | null = null;
   let ocrGradingCompany: OcrGradingCompany | null = null;
   let ocrConfidence: OcrConfidence = 'low';
   let rawCertResponse: Record<string, unknown> | null = null;
 
   if (imageField instanceof File && imageField.size > 0) {
-    uploadedImageUrl = await uploadScanImage(supabaseUserId, imageField);
-
-    const prompt =
-      'This is a photo of a graded sports card in a protective case (slab). Look at the label on the slab and extract: (1) the certification number (cert number) — usually a 7-9 digit number, (2) the grading company — one of PSA, BGS, SGC, or CGC. Return ONLY a JSON object: { certNumber: string | null, gradingCompany: \'PSA\' | \'BGS\' | \'SGC\' | \'CGC\' | \'UNKNOWN\' } If you cannot read the cert number clearly, return certNumber as null.';
-
     try {
-      const response = await openai.responses.create({
-        model: 'gpt-4o',
-        input: [
-          {
-            role: 'user',
-            content: [
-              { type: 'input_text', text: prompt },
-              {
-                type: 'input_image',
-                image_url: uploadedImageUrl,
-                detail: 'high',
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'slab_ocr',
-            strict: true,
-            schema: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                certNumber: { anyOf: [{ type: 'string' }, { type: 'null' }] },
-                gradingCompany: {
-                  type: 'string',
-                  enum: ['PSA', 'BGS', 'SGC', 'CGC', 'UNKNOWN'],
-                },
-              },
-              required: ['certNumber', 'gradingCompany'],
-            },
-          },
-        },
+      uploadedImageUrl = await uploadScanImage(supabaseUserId, imageField);
+      openAiImageUrl = uploadedImageUrl;
+    } catch (error) {
+      console.error('Unable to upload image to Supabase storage', {
+        error: error instanceof Error ? error.message : String(error),
       });
 
+      openAiImageUrl = await fileToDataUrl(imageField);
+    }
+
+    uploadedImageUrl = resolveStoredScanImageUrl(uploadedImageUrl, fallbackImageUrl);
+
+    try {
+      const response = await callSlabOcr(openAiImageUrl);
       const parsed = parseScannerOcrResponse(response);
       if (parsed) {
         ocrCertNumber = parsed.certNumber;

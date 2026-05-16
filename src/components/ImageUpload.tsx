@@ -62,13 +62,16 @@ export function ImageUpload({
 
   return (
     <div className="space-y-3">
-      <div className="group relative overflow-hidden rounded-[1.75rem] border border-dashed border-slate-300 bg-gradient-to-br from-white to-slate-50 p-6 text-left shadow-[0_16px_45px_rgba(15,23,42,0.06)] transition-colors hover:border-brand-300">
+      <label
+        htmlFor={inputId}
+        className="group relative block overflow-hidden rounded-[1.75rem] border border-dashed border-slate-300 bg-gradient-to-br from-white to-slate-50 p-6 text-left shadow-[0_16px_45px_rgba(15,23,42,0.06)] transition-colors hover:border-brand-300"
+      >
         <input
           id={inputId}
           type="file"
           accept={accept}
           capture="environment"
-          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          className="sr-only"
           aria-label="Upload slab photo"
           onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
         />
@@ -89,6 +92,7 @@ export function ImageUpload({
               <button
                 type="button"
                 onClick={(event) => {
+                  event.preventDefault();
                   event.stopPropagation();
                   clearSelection();
                 }}
@@ -115,7 +119,7 @@ export function ImageUpload({
             </div>
           </div>
         )}
-      </div>
+      </label>
 
       {warning ? <p className="text-sm text-amber-700">{warning}</p> : <p className="text-sm text-slate-500">Tip: the label is easier to read when the barcode and cert number fill most of the frame.</p>}
     </div>
