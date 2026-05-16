@@ -1,6 +1,7 @@
 import { openai } from '@/lib/openai';
 import { findOrCreateCard } from '@/lib/card-catalog';
 import type { NormalizedImportItem, ParsedImportItem } from './types';
+import { extractFirstArray } from './extract-utils';
 
 type ParsedCard = {
   player: string | null;
@@ -46,9 +47,9 @@ function safeConfidence(v: unknown): 'high' | 'medium' | 'low' {
   return 'low';
 }
 
-const BATCH_PROMPT = (titles: string[]) => `Parse these trading card listing titles. For each title return a JSON object.
+const BATCH_PROMPT = (titles: string[]) => `Parse these trading card listing titles.
 
-Return a JSON array in the SAME ORDER as the input. One object per title.
+Return a JSON object with key "items" containing an array, in the SAME ORDER as the input. One object per title.
 
 For each title return:
 {
@@ -95,11 +96,7 @@ async function batchNormalize(titles: string[]): Promise<ParsedCard[]> {
 
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    const arr = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed.items)
-        ? (parsed.items as unknown[])
-        : [];
+    const arr = extractFirstArray(parsed);
 
     return arr.map((item) => {
       const r = item as Record<string, unknown>;
