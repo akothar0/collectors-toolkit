@@ -14,6 +14,8 @@ test('isProtectedRoute matches scanner and collection tools', () => {
   assert.equal(isProtectedRoute('/scanner'), true);
   assert.equal(isProtectedRoute('/scanner/history'), true);
   assert.equal(isProtectedRoute('/collection'), true);
+  assert.equal(isProtectedRoute('/collection/abc'), true);
+  assert.equal(isProtectedRoute('/wantlist'), true);
   assert.equal(isProtectedRoute('/'), false);
 });
 

@@ -4,6 +4,7 @@ export const PROTECTED_ROUTE_PREFIXES = [
   '/scanner',
   '/grader',
   '/collection',
+  '/wantlist',
   '/portfolio',
   '/import',
 ] as const;

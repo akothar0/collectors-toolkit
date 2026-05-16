@@ -4,6 +4,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import {
   ChartColumnIncreasing,
   Gauge,
+  Heart,
   Home,
   Import,
   LibraryBig,
@@ -13,7 +14,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-type AppRoute = '/' | '/scanner' | '/grader' | '/collection' | '/portfolio' | '/import';
+type AppRoute = '/' | '/scanner' | '/grader' | '/collection' | '/wantlist' | '/portfolio' | '/import';
 
 type NavItem = {
   href: AppRoute;
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { href: '/scanner', label: 'Scanner', icon: <ScanLine className="h-4 w-4" /> },
   { href: '/grader', label: 'Grader', icon: <Gauge className="h-4 w-4" /> },
   { href: '/collection', label: 'Collection', icon: <LibraryBig className="h-4 w-4" /> },
+  { href: '/wantlist', label: 'Want List', icon: <Heart className="h-4 w-4" /> },
   { href: '/portfolio', label: 'Portfolio', icon: <ChartColumnIncreasing className="h-4 w-4" /> },
   { href: '/import', label: 'Import', icon: <Import className="h-4 w-4" /> },
 ];

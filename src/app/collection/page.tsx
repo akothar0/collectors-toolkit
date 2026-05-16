@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { CreditCard, Grid3X3, List, Plus, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   GRADING_COMPANIES,
@@ -39,6 +40,7 @@ function parseSortValue(value: string): Pick<CollectionListFilters, 'sortBy' | '
 }
 
 export default function CollectionPage() {
+  const router = useRouter();
   const [items, setItems] = useState<CollectionCardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -221,7 +223,7 @@ export default function CollectionPage() {
           ))}
         </div>
       ) : (
-        <CollectionListTable items={items} />
+        <CollectionListTable items={items} onSelect={(id) => router.push(`/collection/${id}` as Route)} />
       )}
     </section>
   );
@@ -266,7 +268,10 @@ function CollectionGridCard({ item }: { item: CollectionCardItem }) {
   const price = formatPrice(item.purchasePrice);
 
   return (
-    <article className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-soft">
+    <Link
+      href={`/collection/${item.id}` as Route}
+      className="block overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-soft transition-shadow hover:shadow-md"
+    >
       <div className="aspect-[3/4] bg-slate-100">
         {item.frontImageUrl ? (
           <img src={item.frontImageUrl} alt={player} className="h-full w-full object-cover" />
@@ -284,11 +289,17 @@ function CollectionGridCard({ item }: { item: CollectionCardItem }) {
           {price ? <span className="text-xs text-slate-500">{price}</span> : null}
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
-function CollectionListTable({ items }: { items: CollectionCardItem[] }) {
+function CollectionListTable({
+  items,
+  onSelect,
+}: {
+  items: CollectionCardItem[];
+  onSelect: (id: string) => void;
+}) {
   return (
     <div className="overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white shadow-soft">
       <table className="min-w-full text-left text-sm">
@@ -309,7 +320,11 @@ function CollectionListTable({ items }: { items: CollectionCardItem[] }) {
             const player = displayPlayer(item);
             const price = formatPrice(item.purchasePrice);
             return (
-              <tr key={item.id} className="border-b border-slate-100 last:border-0">
+              <tr
+                key={item.id}
+                className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                onClick={() => onSelect(item.id)}
+              >
                 <td className="px-4 py-3">
                   {item.frontImageUrl ? (
                     <img src={item.frontImageUrl} alt="" className="h-12 w-9 rounded object-cover" />

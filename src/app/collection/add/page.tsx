@@ -28,12 +28,15 @@ function AddCardForm() {
   const sessionId = searchParams.get('session');
   const queryGrade = searchParams.get('grade') ?? undefined;
   const queryCompany = searchParams.get('company') ?? undefined;
+  const queryPlayer = searchParams.get('player') ?? '';
+  const queryYear = searchParams.get('year') ?? '';
+  const querySet = searchParams.get('setName') ?? searchParams.get('set') ?? '';
 
-  const [player, setPlayer] = useState('');
+  const [player, setPlayer] = useState(queryPlayer);
   const [cardId, setCardId] = useState<string | null>(null);
-  const [year, setYear] = useState('');
+  const [year, setYear] = useState(queryYear);
   const [sport, setSport] = useState<string>('Baseball');
-  const [setName, setSetName] = useState('');
+  const [setName, setSetName] = useState(querySet);
   const [cardNumber, setCardNumber] = useState('');
   const [parallel, setParallel] = useState('');
   const [isRookie, setIsRookie] = useState(false);

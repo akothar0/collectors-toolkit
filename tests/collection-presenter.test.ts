@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   displayPlayer,
   displaySetName,
+  formatGainLoss,
   formatGradeBadge,
   formatPlayerYearLine,
   formatPrice,
@@ -50,4 +51,15 @@ test('formatPlayerYearLine includes year when present', () => {
 test('formatPrice returns currency string', () => {
   assert.equal(formatPrice(125), '$125');
   assert.equal(formatPrice(null), null);
+});
+
+test('formatGainLoss calculates delta and percent', () => {
+  const result = formatGainLoss(100, 150);
+  assert.ok(result);
+  assert.equal(result?.delta, 50);
+  assert.equal(result?.percent, 50);
+});
+
+test('formatGainLoss returns null when inputs missing', () => {
+  assert.equal(formatGainLoss(null, 100), null);
 });
