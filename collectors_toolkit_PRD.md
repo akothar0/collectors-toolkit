@@ -96,16 +96,19 @@ The following are explicitly out of scope for v1 (Weeks 1–8):
 
 | # | Acceptance Criterion |
 |---|----------------------|
-| AC-11 | User uploads a card photo → receives a predicted grade on the PSA 1–10 scale within 15 seconds |
-| AC-12 | Grade result includes 4 sub-grades: centering, corners, edges, surface (each 1–10) |
-| AC-13 | Grade result includes 2–4 sentences of plain-English condition notes referencing actual visible details |
-| AC-14 | Grade result includes submission recommendation (yes/no) with cost-based rationale |
-| AC-15 | A confidence level (low/medium/high) is shown prominently on the result |
-| AC-16 | When confidence is low: UI shows a clear warning and photography tips to improve the photo |
-| AC-17 | A disclaimer "AI estimate only — not a professional grade" is visible and prominent on every grade result |
-| AC-18 | Rate limit: 10 grade sessions per user per day. Count shown on grader page. |
-| AC-19 | User can save a grade session and see past sessions in grade history |
-| AC-20 | User can navigate from grade result directly to "add this card to collection" with grade pre-filled |
+| AC-11 | Grader page guides user through a 1–4 photo capture sequence with on-screen instructions per step |
+| AC-12 | Step 1 (full front) is required; steps 2–4 (back, surface close-up, corner) are optional but prompted |
+| AC-13 | GPT-4o receives all submitted images in one call; returns overall grade within 15 seconds |
+| AC-14 | Grade result includes 4 sub-grades: centering, corners, edges, surface (each 1–10) |
+| AC-15 | Grade result includes PSA prediction, BGS prediction, and CGC prediction separately |
+| AC-16 | Grade result highlights recommended grading company (whichever grades highest for this card profile) |
+| AC-17 | Grade result includes 2–4 sentences of plain-English condition notes referencing actual visible details |
+| AC-18 | Grade result includes submission recommendation + cost-benefit note (PSA ~$25, BGS ~$30, CGC ~$20) |
+| AC-19 | Confidence level (low/medium/high) is shown prominently; low confidence triggers retake guidance |
+| AC-20 | A disclaimer "AI estimate only — not a professional grade" is visible on every grade result |
+| AC-21 | Rate limit: 10 grade sessions per user per day |
+| AC-22 | User can save a grade session and see past sessions in grade history |
+| AC-23 | User can navigate from grade result to "add this card to collection" with grade + company pre-filled |
 
 ---
 
@@ -197,8 +200,9 @@ The following are explicitly out of scope for v1 (Weeks 1–8):
 
 | Integration | Purpose | Free Tier | Required In |
 |-------------|---------|-----------|-------------|
-| PSA API `GetByCertNumber` (`api.psacard.com/publicapi/`) | PSA cert verification — returns card identity, grade, pop, qualifier, auto grade | 100 calls/day free | Week 2 |
+| PSA API `GetByCertNumber` (`api.psacard.com/publicapi/`) | PSA cert verification — card identity, grade, pop, qualifier, auto grade | 100 calls/day free | Week 2 |
 | PSA API `GetPSASpecPopulation` | Full grade distribution by spec (v2) | Same 100/day budget | Week 11 |
+| OpenAI GPT-4o Vision | Raw card grading (multi-image, PSA+BGS+CGC predictions) + cert OCR + import parsing | Pay per use | Week 4 |
 | Beckett scrape (`beckett.com/grading/card-lookup`) | BGS cert verification | Free (scraping) | Week 3 |
 | SGC scrape (`gosgc.com/cert-code-lookup`) | SGC cert verification | Free (scraping) | Week 3 |
 | CardGrade.io | Fallback cert aggregator | Free, no auth | Week 3 |

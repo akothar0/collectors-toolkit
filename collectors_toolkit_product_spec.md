@@ -35,14 +35,26 @@ Scan a graded slab → cert lookup → card identity + grade + population data
 - Output: player, year, set, grade, pop at grade, pop higher
 - Save directly to collection
 
-**2. Raw Card AI Grader** — powered by CardGrade.io (not GPT-4o)
-Upload raw card photo → specialized AI grading model
-- Submits front + optional back image to CardGrade.io REST API (`POST /api/v1/grade`)
-- Async: polls until `status === "completed"` (typically 5–15 seconds)
-- Returns: overall grade, 4 sub-grades, **PSA prediction, BGS prediction, CGC prediction**
-- Submission recommendation: which company to submit to + expected grade
-- Prominent disclaimer: "AI estimate only — not a professional grade"
-- **Why CardGrade.io over GPT-4o:** trained specifically on card images; structured JSON output; PSA/BGS/CGC predictions in one call
+**2. Raw Card AI Grader** — GPT-4o Vision with guided multi-photo capture
+Upload photos → structured GPT-4o grading prompt → PSA + BGS + CGC predictions
+
+CardGrade.io uses a vision model + prompts under the hood — we replicate the same output with a crafted GPT-4o prompt, saving $25/month and owning the full logic. Our real differentiator is the **guided photo UX**.
+
+**Guided capture flow (1–4 images):**
+- Step 1: Full front photo (centering + overall) — required
+- Step 2: Back of card (back surface + centering) — recommended
+- Step 3: Surface close-up with raking light (angled phone light reveals scratches invisible head-on) — optional
+- Step 4: Corner close-up on any flagged corner — optional
+
+**GPT-4o prompt encodes explicit PSA/BGS/CGC criteria**, returning:
+- Overall grade + 4 sub-grades (centering, corners, edges, surface)
+- **PSA prediction** (whole number) · **BGS prediction** (0.5 increments) · **CGC prediction**
+- Which company to submit to (`submissionCompany`) — highlights which grades highest for this card's profile
+- Submission ROI note (PSA economy ~$25, BGS ~$30, CGC ~$20)
+- Confidence level (low/medium/high) based on image quality
+- Plain-English condition notes — specific to what's visible, no fabrication
+
+**Disclaimer:** "AI estimate only — not a professional grade. Results depend on photo quality."
 
 **3. Collection Manager**
 Track everything you own — fast
@@ -114,22 +126,16 @@ Cards you're hunting
 | SGC cert verification | Scrape `gosgc.com/cert-code-lookup` | Free (scraping) |
 | Cert lookup fallback | CardGrade.io cert tool (fallback only) | Free on web, API = grading only |
 | Cert# OCR from slab photo | GPT-4o Vision | ~$0.01-0.02 per scan |
-| **Raw card grading** | **CardGrade.io API** (`/api/v1/grade`) | **~$25/month Pro plan** |
+| Raw card grading | GPT-4o Vision (already in stack) | ~$0.02–0.08 per session (4 images × $0.005–0.02 each) |
 | Import parsing (screenshots, PDFs, text) | GPT-4o Vision + GPT-4o-mini | ~$0.001-0.02 per batch |
 | Live price comps (v2) | eBay Browse API | **Free: ~5,000 req/day** |
 | TCG prices (v2) | TCG API (tcgapi.dev) | **Free: 100 req/day** |
 | Real-time price feed | CardHedger API | $49/month — skip for now |
 
-**Bottom line:** v1 costs ~$25/month for CardGrade.io Pro + ~$5-20/month OpenAI = ~$30-45/month total.
+**Bottom line:** v1 is ~$5-20/month OpenAI total. No CardGrade.io needed — GPT-4o handles grading directly.
 
-### CardGrade.io API (Grading Only — Confirmed)
-REST API: `https://cardgrade.io/api/v1/grade`
-- `POST /api/v1/grade` → submit card images → returns `{id, status: "pending"}`
-- `GET /api/v1/grade/:id` → poll until `status === "completed"`
-- Response: `overallGrade`, `centering`, `corners`, `edges`, `surface`, `psaPrediction`, `bgsPrediction`, `cgcPrediction`, `cardName`
-- **NOT a cert lookup tool** — PSA API handles cert verification
-- **Replaces GPT-4o Vision** for the raw card grading feature
-- Env var: `CARDGRADE_API_TOKEN`
+### CardGrade.io (documented, not used in v1)
+CardGrade.io almost certainly uses a vision model + prompt engineering under the hood. We replicate the same output with GPT-4o directly. CardGrade.io is available as a v2 upgrade path if grading quality needs improvement, but start without it.
 
 ### PSA API Field Mapping (OAS 2.0 — confirmed from official Swagger docs)
 
