@@ -1,19 +1,25 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { isProtectedRoute, isPublicRoute, signInPathForRequest } from '@/lib/scanner-route-policy';
 
 const clerkReady = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim());
-const isProtectedPage = createRouteMatcher([
-  '/scanner(.*)',
-  '/grader(.*)',
-  '/collection(.*)',
-  '/portfolio(.*)',
-  '/import(.*)',
-]);
 
 export default clerkReady
   ? clerkMiddleware(async (auth, req) => {
-      if (isProtectedPage(req)) {
-        await auth.protect();
+      const { pathname } = req.nextUrl;
+
+      if (isPublicRoute(pathname)) {
+        return;
+      }
+
+      if (isProtectedRoute(pathname)) {
+        const { userId } = await auth();
+
+        if (!userId) {
+          const signInUrl = signInPathForRequest(req.url);
+          signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
+          return NextResponse.redirect(signInUrl);
+        }
       }
     })
   : function middleware() {

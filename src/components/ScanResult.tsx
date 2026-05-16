@@ -2,9 +2,18 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Loader2, RotateCcw, Save, Search } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { readJsonResponse } from '@/lib/http-json';
 import type { ScannerResult } from '@/lib/scanner';
+import {
+  buildPopulationRows,
+  buildScanDetailRows,
+  confidenceLabel,
+  formatGradeValue,
+  getScanHeadline,
+  getScanStatus,
+  getScanSubheadline,
+} from '@/lib/scanner-presenter';
 
 type ScanResultProps = {
   scan: ScannerResult;
@@ -33,6 +42,8 @@ type SaveFormState = {
   notes: string;
 };
 
+type DetailRow = { label: string; value: string };
+
 function buildSaveForm(scan: ScannerResult): SaveFormState {
   return {
     player: scan.cardPlayer ?? '',
@@ -56,49 +67,47 @@ function buildSaveForm(scan: ScannerResult): SaveFormState {
   };
 }
 
-function gradeLabel(grade: number | null, company: string | null) {
-  if (grade === null || !company) {
-    return null;
+function statusStyles(status: ReturnType<typeof getScanStatus>) {
+  if (status === 'verified') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-900';
   }
 
-  const gradeText = Number.isInteger(grade) ? grade.toFixed(0) : grade.toString();
-  return `${company} ${gradeText}`;
+  if (status === 'partial') {
+    return 'border-amber-200 bg-amber-50 text-amber-950';
+  }
+
+  return 'border-slate-200 bg-slate-50 text-slate-700';
 }
 
-function gradeTone(grade: number | null) {
-  if (grade === null) {
-    return 'bg-slate-100 text-slate-700 ring-slate-200';
+function statusLabel(status: ReturnType<typeof getScanStatus>) {
+  if (status === 'verified') {
+    return 'PSA verified';
   }
 
-  if (grade >= 9.5) {
-    return 'bg-gradient-to-r from-amber-300 to-yellow-400 text-slate-950 ring-amber-200';
+  if (status === 'partial') {
+    return 'Partial match';
   }
 
-  if (grade >= 9) {
-    return 'bg-emerald-100 text-emerald-900 ring-emerald-200';
-  }
-
-  if (grade >= 8.5) {
-    return 'bg-teal-100 text-teal-900 ring-teal-200';
-  }
-
-  if (grade >= 8) {
-    return 'bg-sky-100 text-sky-900 ring-sky-200';
-  }
-
-  if (grade >= 7) {
-    return 'bg-slate-200 text-slate-800 ring-slate-300';
-  }
-
-  return 'bg-slate-100 text-slate-500 ring-slate-200';
+  return 'Needs input';
 }
 
-function formatGrade(grade: number | null) {
-  if (grade === null) {
-    return 'Unverified';
-  }
+function DetailGrid({ rows }: { rows: DetailRow[] }) {
+  return (
+    <dl className="divide-y divide-slate-100">
+      {rows.map((row) => (
+        <DetailRowItem key={row.label} label={row.label} value={row.value} />
+      ))}
+    </dl>
+  );
+}
 
-  return Number.isInteger(grade) ? grade.toFixed(0) : grade.toFixed(1);
+function DetailRowItem({ label, value }: DetailRow) {
+  return (
+    <div className="grid grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)] gap-4 px-1 py-3.5">
+      <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{label}</dt>
+      <dd className="text-sm font-medium text-slate-900">{value}</dd>
+    </div>
+  );
 }
 
 export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps) {
@@ -122,21 +131,12 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
     setSaveForm(buildSaveForm(scan));
   }, [scan]);
 
-  const title = useMemo(() => {
-    if (!result.certLookupSuccess) {
-      return 'Cert lookup unavailable';
-    }
-
-    const year = result.cardYear ? `${result.cardYear} ` : '';
-    const manufacturer = result.cardManufacturer ? `${result.cardManufacturer} ` : '';
-    const player = result.cardPlayer ?? 'Unknown card';
-    return `${year}${manufacturer}${player}`.trim();
-  }, [result]);
-
-  const subtitle = useMemo(() => {
-    const pieces = [result.cardParallel, result.cardNumber].filter((value) => value && value.trim().length > 0);
-    return pieces.length > 0 ? pieces.join(' · ') : null;
-  }, [result.cardNumber, result.cardParallel]);
+  const status = useMemo(() => getScanStatus(result), [result]);
+  const headline = useMemo(() => getScanHeadline(result), [result]);
+  const subheadline = useMemo(() => getScanSubheadline(result), [result]);
+  const detailRows = useMemo(() => buildScanDetailRows(result), [result]);
+  const populationRows = useMemo(() => buildPopulationRows(result), [result]);
+  const hasImage = Boolean(result.imageUrl?.trim());
 
   async function runManualLookup() {
     if (!manualCert.trim()) {
@@ -159,7 +159,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         body: formData,
       });
 
-      const nextResult = await readJsonResponse<ScannerResult>(response);
+      const nextResult = await readJsonResponse<ScannerResult & { remainingScans?: number }>(response);
       if (!response.ok) {
         throw new Error(nextResult.error ?? 'Lookup failed');
       }
@@ -167,8 +167,8 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
       setResult(nextResult);
       setShowSaveForm(!nextResult.certLookupSuccess);
       setSaveForm(buildSaveForm(nextResult));
-      if (typeof (nextResult as ScannerResult & { remainingScans?: number }).remainingScans === 'number') {
-        onQuotaUpdate?.((nextResult as ScannerResult & { remainingScans?: number }).remainingScans as number);
+      if (typeof nextResult.remainingScans === 'number') {
+        onQuotaUpdate?.(nextResult.remainingScans);
       }
     } catch (error) {
       setManualError(error instanceof Error ? error.message : 'Lookup failed');
@@ -211,9 +211,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
 
       const response = await fetch('/api/collection', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -231,261 +229,342 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
     }
   }
 
-  const gradeBadge = gradeLabel(result.officialGrade, result.gradingCompany ?? result.ocrGradingCompany);
-
   return (
-    <section className="grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft">
-        <div className="border-b border-slate-200 px-5 py-4">
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-600">Scan result</p>
-          <p className="mt-1 text-sm text-slate-500">Review the slab photo, then save the card or retry the lookup.</p>
+          <p className="mt-1 text-sm text-slate-500">Structured card details from your slab photo and cert lookup.</p>
         </div>
-
-        <div className="bg-slate-950 p-4">
-          <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-900">
-            <img src={result.imageUrl} alt="Uploaded slab" className="h-[360px] w-full object-cover md:h-[460px]" />
-          </div>
-        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${statusStyles(status)}`}>
+          {statusLabel(status)}
+        </span>
       </div>
 
-      <div className="space-y-5">
-        {result.error ? (
-          <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5 text-amber-950">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Scan status</p>
-            <p className="mt-2 text-base leading-7">{result.error}</p>
-            {onTryAgain ? (
-              <button
-                type="button"
-                onClick={onTryAgain}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-900"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Try again
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+      {result.error ? (
+        <ErrorBanner error={result.error} onTryAgain={onTryAgain} />
+      ) : null}
 
-        {result.ocrCertNumber ? null : (
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Manual cert lookup</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Enter the PSA cert number if the label text was too small or partially obscured.</p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <input
-                value={manualCert}
-                onChange={(event) => setManualCert(event.target.value)}
-                inputMode="numeric"
-                placeholder="Cert number"
-                className="h-11 flex-1 rounded-full border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none ring-0 transition-colors placeholder:text-slate-400 focus:border-brand-300"
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-soft">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Slab photo</p>
+          </div>
+          {hasImage ? (
+            <div className="bg-slate-950 p-3">
+              <img
+                src={result.imageUrl}
+                alt="Uploaded slab"
+                className="h-[320px] w-full rounded-[1.25rem] object-cover md:h-[420px]"
               />
-              <button
-                type="button"
-                onClick={runManualLookup}
-                disabled={manualLoading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand-600 px-5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {manualLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Look up
-              </button>
             </div>
-            {manualError ? <p className="mt-3 text-sm text-rose-600">{manualError}</p> : null}
-          </div>
-        )}
-
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-600">Verified card</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h2>
-              {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+          ) : (
+            <div className="flex h-[220px] items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
+              No preview image stored for this scan.
             </div>
+          )}
+        </div>
 
-            {gradeBadge ? (
-              <div className={`rounded-2xl px-4 py-3 text-right ring-1 ${gradeTone(result.officialGrade)}`}>
-                <div className="text-sm font-medium uppercase tracking-[0.18em]">
-                  {gradeBadge}
-                  {result.qualifierCode ? ` (${result.qualifierCode})` : ''}
-                </div>
-                <div className="mt-1 text-3xl font-semibold">{formatGrade(result.officialGrade)}</div>
+        <div className="space-y-4">
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+            <div className="flex items-start justify-between gap-4">
+              <HeadlineBlock headline={headline} subheadline={subheadline} />
+              <div className="shrink-0 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Grade</p>
+                <p className="mt-1 text-3xl font-semibold text-slate-950">{formatGradeValue(result.officialGrade)}</p>
+                <p className="mt-1 text-xs text-slate-500">{result.gradingCompany ?? result.ocrGradingCompany ?? '—'}</p>
               </div>
-            ) : (
-              <div className="rounded-2xl bg-slate-100 px-4 py-3 text-right text-slate-500 ring-1 ring-slate-200">
-                <div className="text-sm font-medium uppercase tracking-[0.18em]">Awaiting PSA match</div>
-              </div>
-            )}
+            </div>
+
+            {result.gradeDescription ? (
+              <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">{result.gradeDescription}</p>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                {confidenceLabel(result.ocrConfidence)}
+              </span>
+              {result.ocrCertNumber ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  OCR cert {result.ocrCertNumber}
+                </span>
+              ) : null}
+              {result.isDualCert ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  Dual cert
+                </span>
+              ) : null}
+            </div>
           </div>
 
-          {result.gradeDescription ? <p className="mt-4 text-sm font-medium text-slate-600">{result.gradeDescription}</p> : null}
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Card details</p>
+            <DetailGrid rows={detailRows} />
+          </div>
 
-          {result.autographGrade !== null ? (
-            <div className="mt-4 inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-              Auto Grade: {Number.isInteger(result.autographGrade) ? result.autographGrade.toFixed(0) : result.autographGrade.toFixed(1)}
-            </div>
-          ) : null}
-
-          {result.certLookupSuccess ? (
-            <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Pop {result.popAtGrade ?? '—'} at this grade · {result.popHigher ?? '—'} higher · {result.popWithQualifier ?? '—'} with qualifiers
+          {populationRows.length > 0 ? (
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Population</p>
+              <DetailGrid rows={populationRows} />
             </div>
           ) : null}
         </div>
-
-        {!result.certLookupSuccess ? (
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Manual save</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Cert lookup unavailable. Enter the card details below to save this scan to your collection.
-            </p>
-            <form className="mt-5 space-y-4" onSubmit={saveToCollection}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  value={saveForm.player}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, player: event.target.value }))}
-                  placeholder="Player"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.year}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, year: event.target.value }))}
-                  placeholder="Year"
-                  inputMode="numeric"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.setName}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, setName: event.target.value }))}
-                  placeholder="Set"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.parallel}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, parallel: event.target.value }))}
-                  placeholder="Parallel"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.cardNumber}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, cardNumber: event.target.value }))}
-                  placeholder="Card #"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.gradingCompany}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, gradingCompany: event.target.value }))}
-                  placeholder="Grading company"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <input
-                  value={saveForm.grade}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, grade: event.target.value }))}
-                  placeholder="Grade"
-                  inputMode="decimal"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.autographGrade}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, autographGrade: event.target.value }))}
-                  placeholder="Auto grade"
-                  inputMode="decimal"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.certNumber}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, certNumber: event.target.value }))}
-                  placeholder="Cert #"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-              </div>
-
-              <textarea
-                value={saveForm.notes}
-                onChange={(event) => setSaveForm((current) => ({ ...current, notes: event.target.value }))}
-                placeholder="Notes"
-                rows={4}
-                className="w-full rounded-[1.25rem] border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-300"
-              />
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  value={saveForm.purchasePrice}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, purchasePrice: event.target.value }))}
-                  placeholder="Purchase price"
-                  inputMode="decimal"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-                <input
-                  value={saveForm.purchaseDate}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, purchaseDate: event.target.value }))}
-                  type="date"
-                  className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={saveLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save to Collection
-              </button>
-              {saveError ? <p className="text-sm text-rose-600">{saveError}</p> : null}
-              {saveSuccess ? <p className="text-sm text-emerald-700">{saveSuccess}</p> : null}
-            </form>
-          </div>
-        ) : (
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-            <button
-              type="button"
-              onClick={() => setShowSaveForm((current) => !current)}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700"
-            >
-              <Save className="h-4 w-4" />
-              Save to Collection
-            </button>
-
-            {showSaveForm ? (
-              <form className="mt-5 space-y-4" onSubmit={saveToCollection}>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <input
-                    value={saveForm.purchasePrice}
-                    onChange={(event) => setSaveForm((current) => ({ ...current, purchasePrice: event.target.value }))}
-                    placeholder="Purchase price"
-                    inputMode="decimal"
-                    className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                  />
-                  <input
-                    value={saveForm.purchaseDate}
-                    onChange={(event) => setSaveForm((current) => ({ ...current, purchaseDate: event.target.value }))}
-                    type="date"
-                    className="h-11 rounded-full border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-                  />
-                </div>
-                <textarea
-                  value={saveForm.notes}
-                  onChange={(event) => setSaveForm((current) => ({ ...current, notes: event.target.value }))}
-                  placeholder="Notes"
-                  rows={4}
-                  className="w-full rounded-[1.25rem] border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-300"
-                />
-                <button
-                  type="submit"
-                  disabled={saveLoading}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Save to Collection
-                </button>
-                {saveError ? <p className="text-sm text-rose-600">{saveError}</p> : null}
-                {saveSuccess ? <p className="text-sm text-emerald-700">{saveSuccess}</p> : null}
-              </form>
-            ) : null}
-          </div>
-        )}
       </div>
+
+      {!result.certLookupSuccess && !result.ocrCertNumber ? (
+        <ManualLookupPanel
+          manualCert={manualCert}
+          manualError={manualError}
+          manualLoading={manualLoading}
+          onCertChange={setManualCert}
+          onLookup={runManualLookup}
+        />
+      ) : null}
+
+      <SavePanel
+        result={result}
+        showSaveForm={showSaveForm}
+        saveForm={saveForm}
+        saveLoading={saveLoading}
+        saveError={saveError}
+        saveSuccess={saveSuccess}
+        onToggleSave={() => setShowSaveForm((current) => !current)}
+        onSave={saveToCollection}
+        onSaveFormChange={setSaveForm}
+      />
     </section>
+  );
+}
+
+function ErrorBanner({ error, onTryAgain }: { error: string; onTryAgain?: () => void }) {
+  return (
+    <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
+      <p className="text-sm leading-7 text-amber-950">{error}</p>
+      {onTryAgain ? (
+        <button
+          type="button"
+          onClick={onTryAgain}
+          className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-900"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Scan another slab
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function HeadlineBlock({ headline, subheadline }: { headline: string; subheadline: string | null }) {
+  return (
+    <div className="min-w-0">
+      <h2 className="truncate text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{headline}</h2>
+      {subheadline ? <p className="mt-2 text-sm text-slate-500">{subheadline}</p> : null}
+    </div>
+  );
+}
+
+function ManualLookupPanel({
+  manualCert,
+  manualError,
+  manualLoading,
+  onCertChange,
+  onLookup,
+}: {
+  manualCert: string;
+  manualError: string;
+  manualLoading: boolean;
+  onCertChange: (value: string) => void;
+  onLookup: () => void;
+}) {
+  return (
+    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Manual PSA lookup</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Enter the cert number if the label was hard to read.</p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <input
+          value={manualCert}
+          onChange={(event) => onCertChange(event.target.value)}
+          inputMode="numeric"
+          placeholder="Cert number"
+          className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:border-brand-300"
+        />
+        <button
+          type="button"
+          onClick={onLookup}
+          disabled={manualLoading}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {manualLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          Look up cert
+        </button>
+      </div>
+      {manualError ? <p className="mt-3 text-sm text-rose-600">{manualError}</p> : null}
+    </div>
+  );
+}
+
+function SavePanel({
+  result,
+  showSaveForm,
+  saveForm,
+  saveLoading,
+  saveError,
+  saveSuccess,
+  onToggleSave,
+  onSave,
+  onSaveFormChange,
+}: {
+  result: ScannerResult;
+  showSaveForm: boolean;
+  saveForm: SaveFormState;
+  saveLoading: boolean;
+  saveError: string;
+  saveSuccess: string;
+  onToggleSave: () => void;
+  onSave: (event: FormEvent<HTMLFormElement>) => void;
+  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
+}) {
+  return (
+    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Collection</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {result.certLookupSuccess
+              ? 'Save this verified slab to your collection.'
+              : 'Add card details manually if cert lookup did not complete.'}
+          </p>
+        </div>
+        {result.certLookupSuccess ? (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
+          >
+            <Save className="h-4 w-4" />
+            {showSaveForm ? 'Hide form' : 'Save to collection'}
+          </button>
+        ) : null}
+      </div>
+
+      {(showSaveForm || !result.certLookupSuccess) && (
+        <form className="mt-5 space-y-4" onSubmit={onSave}>
+          {!result.certLookupSuccess ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                value={saveForm.player}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, player: event.target.value }))}
+                placeholder="Player"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.year}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, year: event.target.value }))}
+                placeholder="Year"
+                inputMode="numeric"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.setName}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, setName: event.target.value }))}
+                placeholder="Set"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.parallel}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, parallel: event.target.value }))}
+                placeholder="Parallel"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.cardNumber}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, cardNumber: event.target.value }))}
+                placeholder="Card #"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.gradingCompany}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, gradingCompany: event.target.value }))}
+                placeholder="Grading company"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.grade}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, grade: event.target.value }))}
+                placeholder="Grade"
+                inputMode="decimal"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+              <input
+                value={saveForm.certNumber}
+                onChange={(event) => onSaveFormChange((current) => ({ ...current, certNumber: event.target.value }))}
+                placeholder="Cert #"
+                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+              />
+            </div>
+          ) : null}
+
+          <PurchaseFields saveForm={saveForm} onSaveFormChange={onSaveFormChange} />
+
+          <button
+            type="submit"
+            disabled={saveLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save to collection
+          </button>
+          {saveError ? <p className="text-sm text-rose-600">{saveError}</p> : null}
+          {saveSuccess ? <p className="text-sm text-emerald-700">{saveSuccess}</p> : null}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function PurchaseFields({
+  saveForm,
+  onSaveFormChange,
+}: {
+  saveForm: SaveFormState;
+  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
+}) {
+  return (
+    <>
+      <PurchaseInputs saveForm={saveForm} onSaveFormChange={onSaveFormChange} />
+      <textarea
+        value={saveForm.notes}
+        onChange={(event) => onSaveFormChange((current) => ({ ...current, notes: event.target.value }))}
+        placeholder="Notes"
+        rows={4}
+        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-300"
+      />
+    </>
+  );
+}
+
+function PurchaseInputs({
+  saveForm,
+  onSaveFormChange,
+}: {
+  saveForm: SaveFormState;
+  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <input
+        value={saveForm.purchasePrice}
+        onChange={(event) => onSaveFormChange((current) => ({ ...current, purchasePrice: event.target.value }))}
+        placeholder="Purchase price"
+        inputMode="decimal"
+        className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+      />
+      <input
+        value={saveForm.purchaseDate}
+        onChange={(event) => onSaveFormChange((current) => ({ ...current, purchaseDate: event.target.value }))}
+        type="date"
+        className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+      />
+    </div>
   );
 }

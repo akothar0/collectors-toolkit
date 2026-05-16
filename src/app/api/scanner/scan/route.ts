@@ -7,9 +7,11 @@ import { SCAN_LIMIT } from '@/lib/scanner-limit';
 import { createServiceClient } from '@/lib/supabase';
 import { inferConfidence, parseScannerOcrResponse } from '@/lib/scanner-ocr';
 import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
+import { isConfigurationError, scannerErrorResponse } from '@/lib/scanner-api';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 async function getOrCreateUserId(clerkId: string, email: string | null) {
   const supabase = createServiceClient();
@@ -211,6 +213,27 @@ async function updateScanRow(scanId: string, payload: ScanRowPayload) {
 }
 
 export async function POST(req: Request) {
+  try {
+    return await handleScanRequest(req);
+  } catch (error) {
+    console.error('Scanner scan request failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    if (isConfigurationError(error)) {
+      return scannerErrorResponse(
+        'Scanner storage is not configured on the server. Check Supabase environment variables in Vercel.',
+        503
+      );
+    }
+
+    return scannerErrorResponse(
+      error instanceof Error ? error.message : 'Unable to scan this slab right now.'
+    );
+  }
+}
+
+async function handleScanRequest(req: Request) {
   const { userId } = await auth();
 
   if (!userId) {
@@ -309,12 +332,26 @@ export async function POST(req: Request) {
     popHigher: null,
   };
 
-  const scanId = await insertScanRow(supabaseUserId, initialResult);
+  let scanId = '';
+  try {
+    scanId = await insertScanRow(supabaseUserId, initialResult);
+  } catch (error) {
+    console.error('Unable to persist scan row', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   let finalResult: ScannerResult = {
     ...initialResult,
     scanId,
   };
+
+  if (!scanId) {
+    finalResult = {
+      ...finalResult,
+      error: 'Scan completed, but we could not save this attempt to your history. You can still review the results below.',
+    };
+  }
 
   const lookupCertNumber = manualCert || ocrCertNumber;
   const lookupAllowed = lookupCertNumber && (manualCert || ocrGradingCompany === 'PSA');
@@ -397,15 +434,17 @@ export async function POST(req: Request) {
     };
   }
 
-  try {
-    await updateScanRow(scanId, {
-      ...finalResult,
-      rawCertResponse,
-    });
-  } catch (error) {
-    console.error('Unable to finalize scan row', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+  if (scanId) {
+    try {
+      await updateScanRow(scanId, {
+        ...finalResult,
+        rawCertResponse,
+      });
+    } catch (error) {
+      console.error('Unable to finalize scan row', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   const quota = await getRateLimitStatus(supabaseUserId, 'scan', SCAN_LIMIT);
