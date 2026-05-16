@@ -239,7 +239,7 @@ function InlineInput({ value, onChange, placeholder }: { value: string; onChange
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full min-w-[60px] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-200"
+      className="w-full min-w-[60px] cursor-text rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-200"
     />
   );
 }
