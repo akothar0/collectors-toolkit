@@ -86,7 +86,7 @@ function normalizeGrade(value: unknown) {
     return null;
   }
 
-  const match = raw.match(/^(\d+(?:\.\d+)?)(?:\s+(.+))?$/);
+  const match = raw.match(/(\d+(?:\.\d+)?)(?:\s+([A-Z]+))?$/i);
   if (!match) {
     return null;
   }
@@ -124,7 +124,7 @@ function pickCertPayload(body: unknown): PsaRawCert | null {
   return payload;
 }
 
-function normalizeCertBody(certNumber: string, body: unknown): PSALookupResult | null {
+export function normalizePSACertBody(certNumber: string, body: unknown): PSALookupResult | null {
   const cert = pickCertPayload(body);
   if (!cert) {
     return null;
@@ -132,7 +132,7 @@ function normalizeCertBody(certNumber: string, body: unknown): PSALookupResult |
 
   const itemStatus = asString(cert.ItemStatus ?? cert.itemStatus);
   const isPsaDNA = asBoolean(cert.IsPSADNA ?? cert.isPSADNA);
-  if (isPsaDNA || itemStatus !== 'Y') {
+  if (isPsaDNA || (itemStatus !== null && itemStatus !== 'Y')) {
     return null;
   }
 
@@ -214,7 +214,7 @@ export async function lookupPSACert(certNumber: string): Promise<PSALookupResult
     }
 
     const body = (await response.json()) as unknown;
-    const normalized = normalizeCertBody(trimmedCert, body);
+    const normalized = normalizePSACertBody(trimmedCert, body);
 
     if (!normalized) {
       return null;
@@ -229,4 +229,3 @@ export async function lookupPSACert(certNumber: string): Promise<PSALookupResult
     return null;
   }
 }
-

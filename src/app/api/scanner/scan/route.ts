@@ -4,58 +4,13 @@ import { findOrCreateCard } from '@/lib/card-catalog';
 import { lookupPSACert } from '@/lib/cert-lookup/psa';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase';
+import { inferConfidence, parseScannerOcrResponse } from '@/lib/scanner-ocr';
 import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
 const SCAN_LIMIT = 10;
-
-type OcrResponse = {
-  certNumber: string | null;
-  gradingCompany: OcrGradingCompany;
-};
-
-function normalizeGradingCompany(value: unknown): OcrGradingCompany {
-  const normalized = typeof value === 'string' ? value.trim().toUpperCase() : '';
-  if (normalized === 'PSA' || normalized === 'BGS' || normalized === 'SGC' || normalized === 'CGC') {
-    return normalized;
-  }
-
-  return 'UNKNOWN';
-}
-
-function inferConfidence(certNumber: string | null, gradingCompany: OcrGradingCompany | null): OcrConfidence {
-  if (certNumber && gradingCompany && gradingCompany !== 'UNKNOWN') {
-    return 'high';
-  }
-
-  if (certNumber || (gradingCompany && gradingCompany !== 'UNKNOWN')) {
-    return 'medium';
-  }
-
-  return 'low';
-}
-
-function parseOcrResponse(text: string | null | undefined): OcrResponse | null {
-  if (!text) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(text) as Record<string, unknown>;
-    return {
-      certNumber: typeof parsed.certNumber === 'string' && parsed.certNumber.trim() ? parsed.certNumber.trim() : null,
-      gradingCompany: normalizeGradingCompany(parsed.gradingCompany),
-    };
-  } catch (error) {
-    console.error('Unable to parse OpenAI OCR response', {
-      error: error instanceof Error ? error.message : String(error),
-      text,
-    });
-    return null;
-  }
-}
 
 async function getOrCreateUserId(clerkId: string, email: string | null) {
   const supabase = createServiceClient();
@@ -273,7 +228,7 @@ export async function POST(req: Request) {
         },
       });
 
-      const parsed = parseOcrResponse(response.output_text);
+      const parsed = parseScannerOcrResponse(response);
       if (parsed) {
         ocrCertNumber = parsed.certNumber;
         ocrGradingCompany = parsed.gradingCompany;
