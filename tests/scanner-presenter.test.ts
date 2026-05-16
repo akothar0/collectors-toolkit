@@ -45,7 +45,7 @@ test('needsCertConfirmation is true until PSA verifies', () => {
   assert.equal(needsCertConfirmation({ ...verifiedScan, certLookupSuccess: false }), true);
 });
 
-test('inferConfidence marks 9-digit PSA reads as high', () => {
-  assert.equal(inferOcrConfidence('113364366', 'PSA'), 'high');
+test('inferConfidence is medium for any plausible PSA OCR read', () => {
+  assert.equal(inferOcrConfidence('113364366', 'PSA'), 'medium');
   assert.equal(inferOcrConfidence('11336436', 'PSA'), 'medium');
 });

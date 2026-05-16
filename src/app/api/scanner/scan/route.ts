@@ -1,7 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { findOrCreateCard } from '@/lib/card-catalog';
 import { lookupPSACert } from '@/lib/cert-lookup/psa';
-import { normalizeCertNumber } from '@/lib/cert-number';
+import { isPlausibleCertNumber, normalizeCertNumber } from '@/lib/cert-number';
 import { readSlabLabel } from '@/lib/slab-ocr';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
@@ -296,21 +296,18 @@ async function handleScanRequest(req: Request) {
     };
   }
 
-  const autoLookup =
-    !manualCert &&
-    ocrConfidence === 'high' &&
-    ocrGradingCompany === 'PSA' &&
-    Boolean(ocrCertNumber);
+  const lookupCertNumber =
+    manualCert ||
+    (ocrGradingCompany === 'PSA' && ocrCertNumber && isPlausibleCertNumber(ocrCertNumber) ? ocrCertNumber : null);
 
-  const lookupCertNumber = manualCert || (autoLookup ? ocrCertNumber : null);
-
-  if (lookupCertNumber && (manualCert || autoLookup)) {
+  if (lookupCertNumber) {
     const psaResult = await lookupPSACert(lookupCertNumber);
 
     if (psaResult) {
       finalResult = {
         ...finalResult,
         certLookupSuccess: true,
+        ocrConfidence: 'high',
         certNumber: psaResult.certNumber,
         gradingCompany: 'PSA',
         itemStatus: 'Y',

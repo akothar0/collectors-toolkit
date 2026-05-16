@@ -85,8 +85,9 @@ test('extractCertDigits strips non-digits', () => {
   assert.equal(extractCertDigits('#113364366'), '113364366');
 });
 
-test('inferConfidence requires 9+ digits for auto PSA lookup', () => {
-  assert.equal(inferConfidence('113364366', 'PSA'), 'high');
+test('inferConfidence stays medium until PSA validates the read', () => {
+  assert.equal(inferConfidence('113364366', 'PSA'), 'medium');
   assert.equal(inferConfidence('11336436', 'PSA'), 'medium');
-  assert.equal(inferConfidence('12345678', 'PSA'), 'medium');
+  assert.equal(inferConfidence('1234567', 'PSA'), 'medium');
+  assert.equal(inferConfidence('1234', 'PSA'), 'low');
 });

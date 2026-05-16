@@ -24,14 +24,14 @@ export function formatGradeValue(grade: number | null) {
 
 export function confidenceLabel(confidence: OcrConfidence) {
   if (confidence === 'high') {
-    return 'High confidence';
+    return 'PSA verified';
   }
 
   if (confidence === 'medium') {
-    return 'Needs confirmation';
+    return 'Confirm cert number';
   }
 
-  return 'Low confidence';
+  return 'Could not read cert';
 }
 
 export function getVerifiedTitle(scan: ScannerResult) {

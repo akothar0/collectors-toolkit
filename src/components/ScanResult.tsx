@@ -312,9 +312,9 @@ function PendingSummary({
       {showCertPrompt ? (
         <>
           <p className="text-sm text-slate-600">
-            {confidence === 'medium' || confidence === 'low'
-              ? 'We read a possible cert number from the label. Confirm it below to fetch from PSA.'
-              : 'PSA could not verify the detected cert. Check the number and try again.'}
+            {ocrCert
+              ? 'PSA did not recognize the number we read. Confirm the cert below and fetch again.'
+              : 'Enter your PSA cert number to load card details.'}
           </p>
           {ocrCert ? (
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">

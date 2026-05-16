@@ -1,4 +1,4 @@
-import { normalizeCertNumber } from '@/lib/cert-number';
+import { isPlausibleCertNumber, normalizeCertNumber } from '@/lib/cert-number';
 import type { OcrConfidence, OcrGradingCompany } from '@/lib/scanner';
 
 export type ScannerOcrResponse = {
@@ -39,21 +39,17 @@ export function extractCertDigits(value: unknown): string | null {
   return null;
 }
 
-/** High = auto PSA lookup. Medium/low = show prefilled cert and ask user to confirm. */
+/**
+ * OCR-only confidence before PSA validates the read.
+ * High is assigned only after PSA lookup succeeds (see scan route).
+ */
 export function inferConfidence(certNumber: string | null, gradingCompany: OcrGradingCompany | null): OcrConfidence {
-  const digits = certNumber ?? '';
-  const hasCompany = Boolean(gradingCompany && gradingCompany !== 'UNKNOWN');
-
-  if (digits.length >= 9 && hasCompany && gradingCompany === 'PSA') {
-    return 'high';
-  }
-
-  if (digits.length >= 7 && hasCompany && gradingCompany === 'PSA') {
+  if (gradingCompany === 'PSA' && isPlausibleCertNumber(certNumber)) {
     return 'medium';
   }
 
-  if (digits.length >= 4 || hasCompany) {
-    return 'medium';
+  if (certNumber || (gradingCompany && gradingCompany !== 'UNKNOWN')) {
+    return 'low';
   }
 
   return 'low';
