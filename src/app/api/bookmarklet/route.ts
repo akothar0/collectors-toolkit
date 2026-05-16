@@ -7,25 +7,43 @@ export const runtime = 'nodejs';
 export function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
+  // eBay item titles are plain <a> tags linking to /itm/ — no reliable class names.
+  // Strategy: find all item links, then walk up the DOM to extract price + date from
+  // the surrounding order container.
   const source = `(function(){
   var items=[];
-  var rows=document.querySelectorAll('[class*="purchase-history"] li, [class*="purchase"] tr, [data-testid*="item-card"], .ux-layout-section__row');
-  if(!rows.length){rows=document.querySelectorAll('li');}
-  rows.forEach(function(row){
-    var titleEl=row.querySelector('a[class*="title"],h3,h2,[class*="item-title"],[class*="listing-title"]');
-    var priceEl=row.querySelector('[class*="price"],[class*="amount"],[class*="cost"]');
-    var dateEl=row.querySelector('[class*="date"],[class*="time"]');
-    var title=titleEl?titleEl.textContent.trim():'';
-    if(title.length>10){
-      items.push({
-        title:title,
-        price:priceEl?priceEl.textContent.replace(/[^0-9.]/g,''):null,
-        date:dateEl?dateEl.textContent.trim():null
-      });
+  var seen=new Set();
+
+  // All eBay item page links contain /itm/ in the href
+  var links=Array.from(document.querySelectorAll('a[href*="/itm/"]'));
+
+  links.forEach(function(a){
+    var title=(a.textContent||'').trim();
+    // Skip image links, short labels, duplicates
+    if(title.length<15||seen.has(title))return;
+    seen.add(title);
+
+    var price=null,date=null;
+    // Walk up 10 levels to find the order block containing price + date
+    var el=a.parentElement;
+    for(var i=0;i<10&&el;i++){
+      var text=el.innerText||'';
+      if(!price){
+        var pm=text.match(/US\\s*\\$\\s*([\\d,]+\\.?\\d*)|(?:Order total:\\s*US\\s*\\$|\\$)\\s*([\\d,]+\\.?\\d*)/);
+        if(pm)price=parseFloat((pm[1]||pm[2]).replace(/,/g,''))||null;
+      }
+      if(!date){
+        var dm=text.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2},\\s+\\d{4}/);
+        if(dm)date=dm[0];
+      }
+      if(price&&date)break;
+      el=el.parentElement;
     }
+    items.push({title:title,price:price,date:date});
   });
+
   if(items.length===0){
-    alert('No purchases found. Make sure you are on your eBay Purchases page: ebay.com/mye/myebay/purchase');
+    alert('No purchases found. Make sure you are on: ebay.com/mye/myebay/purchase');
     return;
   }
   var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(items))));
