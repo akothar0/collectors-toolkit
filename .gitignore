@@ -1,0 +1,11 @@
+.DS_Store
+.env.local
+.next
+node_modules
+*.log
+.playwright-mcp
+ct-home.png
+
+
+# clerk configuration (can include secrets)
+/.clerk/
