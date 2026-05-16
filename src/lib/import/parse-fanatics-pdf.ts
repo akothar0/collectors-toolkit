@@ -1,5 +1,6 @@
 import { openai } from '@/lib/openai';
 import type { ParsedImportItem } from './types';
+import { extractFirstArray } from './extract-utils';
 
 type RawRow = {
   title?: unknown;
@@ -22,13 +23,6 @@ function stripFanaticsPrefix(title: string): string {
   return title.replace(/^WA\d+\s+Lot\s+#[\w]+:\s*/i, '').trim();
 }
 
-// Find the first array value in a JSON object regardless of key name.
-// Needed because json_object format forces a wrapper — model may use any key.
-function extractArray(parsed: Record<string, unknown>): RawRow[] {
-  if (Array.isArray(parsed)) return parsed as RawRow[];
-  const arrayValue = Object.values(parsed).find(Array.isArray);
-  return (arrayValue as RawRow[] | undefined) ?? [];
-}
 
 const PROMPT = `This is text extracted from a Fanatics Collect order invoice PDF.
 
@@ -69,7 +63,7 @@ export async function parseFanaticsPDF(pdfBuffer: Buffer): Promise<ParsedImportI
   let rows: RawRow[] = [];
   try {
     const parsed = JSON.parse(responseText) as Record<string, unknown>;
-    rows = extractArray(parsed);
+    rows = extractFirstArray(parsed) as RawRow[];
   } catch {
     return [];
   }

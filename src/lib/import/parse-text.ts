@@ -1,7 +1,8 @@
 import { openai } from '@/lib/openai';
 import type { ParsedImportItem } from './types';
+import { extractFirstArray } from './extract-utils';
 
-type RawRow = { title?: unknown; price?: unknown; date?: unknown; source?: unknown };
+type RawRow = { title?: unknown; price?: unknown; date?: unknown };
 
 function toText(v: unknown) {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
@@ -13,13 +14,26 @@ function toPrice(v: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-const PROMPT = `Extract all individual card purchases from this text.
-The text may be from an order confirmation email, purchase history page, or any purchase list.
+// Handles pasted eBay purchases page text specifically.
+// The eBay page has nav, "Recently viewed items", and "SPONSORED" sections
+// before the actual Orders — the prompt must tell GPT to skip those.
+const PROMPT = `This text was copied from the eBay purchases page (ebay.com/mye/myebay/purchase).
 
-For each card return:
-{ "title": string, "price": number | null, "date": string | null, "source": string | null }
+The page has several sections — ONLY extract items from the "Orders" section.
+SKIP all items under "Recently viewed items", "SPONSORED", and any navigation text.
 
-Return a JSON array. Skip shipping charges, taxes, order totals, and non-card items.`;
+The Orders section has entries like:
+  Order date: [date]
+  Order total: US $[amount]
+  Order number: [number]
+  [item title]            ← extract this
+  US $[item price]        ← extract this (the individual listing price, not order total)
+
+Each item title appears multiple times in the text (as link text, alt text, button text).
+Include each unique purchase ONCE — deduplicate.
+
+Return a JSON object with key "items" containing an array. Each element:
+  { "title": string, "price": number | null, "date": string | null }`;
 
 export async function parseImportText(text: string): Promise<ParsedImportItem[]> {
   if (!text.trim()) {
@@ -31,11 +45,11 @@ export async function parseImportText(text: string): Promise<ParsedImportItem[]>
     messages: [
       {
         role: 'user',
-        content: `${PROMPT}\n\nText:\n${text.slice(0, 8000)}`,
+        content: `${PROMPT}\n\nText:\n${text.slice(0, 12000)}`,
       },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 2000,
+    max_tokens: 3000,
   });
 
   const responseText = response.choices[0]?.message?.content ?? '';
@@ -43,8 +57,7 @@ export async function parseImportText(text: string): Promise<ParsedImportItem[]>
   let rows: RawRow[] = [];
   try {
     const parsed = JSON.parse(responseText) as Record<string, unknown>;
-    const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? (parsed.items as RawRow[]) : [];
-    rows = arr as RawRow[];
+    rows = extractFirstArray(parsed) as RawRow[];
   } catch {
     return [];
   }
@@ -54,7 +67,7 @@ export async function parseImportText(text: string): Promise<ParsedImportItem[]>
       rawTitle: toText(row.title) ?? '',
       rawPrice: toPrice(row.price),
       rawDate: toText(row.date),
-      rawSource: toText(row.source) ?? 'Unknown',
+      rawSource: 'eBay',
     }))
     .filter((item) => item.rawTitle.length > 0);
 }

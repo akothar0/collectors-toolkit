@@ -1,5 +1,6 @@
 import { openai } from '@/lib/openai';
 import type { ParsedImportItem } from './types';
+import { extractFirstArray } from './extract-utils';
 
 type RawRow = {
   title?: unknown;
@@ -25,7 +26,8 @@ For each row return:
 { "title": string, "price": number | null, "date": string | null }
 
 The title is the full card listing name — it typically contains player name, year, set, grade, and grading company.
-Return a JSON array. Skip order total lines, shipping charges, and any line that is not a card purchase.
+Return a JSON object with key "items" containing the array.
+Skip order total lines, shipping charges, and any line that is not a card purchase.
 If text is cut off, include whatever is visible.`;
 
 export async function parseEbayScreenshot(imageUrl: string): Promise<ParsedImportItem[]> {
@@ -49,8 +51,7 @@ export async function parseEbayScreenshot(imageUrl: string): Promise<ParsedImpor
   let rows: RawRow[] = [];
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? (parsed.items as RawRow[]) : [];
-    rows = arr as RawRow[];
+    rows = extractFirstArray(parsed) as RawRow[];
   } catch {
     return [];
   }
