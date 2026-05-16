@@ -15,5 +15,5 @@ test('normalizeLookupGradingCompany defaults unknown values to PSA', () => {
 test('certLookupFailureMessage is grader-specific', () => {
   assert.match(certLookupFailureMessage('PSA', '12345'), /PSA/);
   assert.match(certLookupFailureMessage('BGS', '12345'), /Beckett/);
-  assert.match(certLookupFailureMessage('SGC', '12345'), /SGC/);
+  assert.match(certLookupFailureMessage('SGC', '12345'), /not supported/i);
 });

@@ -3,7 +3,6 @@ import { lookupBGS } from '@/lib/cert-lookup/bgs';
 import { lookupCardGradeFallback } from '@/lib/cert-lookup/cardgrade';
 import { psaResultToCertLookup } from '@/lib/cert-lookup/psa-adapter';
 import { lookupPSACertWithStatus } from '@/lib/cert-lookup/psa';
-import { lookupSGC } from '@/lib/cert-lookup/sgc';
 import type { CertLookupResult, CertLookupSource } from '@/lib/cert-lookup/types';
 import { createServiceClient } from '@/lib/supabase';
 
@@ -132,7 +131,14 @@ async function lookupByCompany(
   }
 
   if (company === 'SGC') {
-    return { result: await lookupSGC(certNumber) };
+    return {
+      result: null,
+      error: {
+        code: 'unsupported_grader',
+        message:
+          'SGC cert lookup is not supported. Verify on gosgc.com and save this scan with the details from your slab.',
+      },
+    };
   }
 
   return {
@@ -155,7 +161,7 @@ export function certLookupFailureMessage(gradingCompany: string, certNumber: str
   }
 
   if (company === 'SGC') {
-    return `SGC could not find cert ${certNumber}. Check the number and try again.`;
+    return 'SGC cert lookup is not supported. Verify on gosgc.com and save this scan manually.';
   }
 
   return `We could not verify cert ${certNumber} for ${company}.`;
@@ -198,9 +204,11 @@ export async function lookupCertWithStatus(
   }
 
   const primaryCert = candidates[0];
-  const fallback = await lookupCardGradeFallback(primaryCert);
-  if (fallback) {
-    return { ok: true, result: fallback, fromCache: false };
+  if (company !== 'SGC' && company !== 'CGC') {
+    const fallback = await lookupCardGradeFallback(primaryCert);
+    if (fallback) {
+      return { ok: true, result: fallback, fromCache: false };
+    }
   }
 
   return {

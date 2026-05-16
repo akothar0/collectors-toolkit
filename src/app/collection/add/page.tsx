@@ -1,0 +1,499 @@
+'use client';
+/* eslint-disable @next/next/no-img-element */
+
+import Link from 'next/link';
+import { Check, Loader2, Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { ButtonGroup } from '@/components/ButtonGroup';
+import { GradeChips } from '@/components/GradeChips';
+import { ImageUpload } from '@/components/ImageUpload';
+import { PlayerAutocomplete } from '@/components/PlayerAutocomplete';
+import {
+  GRADING_COMPANIES,
+  PURCHASE_SOURCES,
+  SPORTS,
+  composeGraderPrefillNotes,
+  type CardSearchResult,
+  type GraderSessionPrefill,
+} from '@/lib/collection';
+import { readJsonResponse } from '@/lib/http-json';
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function AddCardForm() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get('session');
+  const queryGrade = searchParams.get('grade') ?? undefined;
+  const queryCompany = searchParams.get('company') ?? undefined;
+
+  const [player, setPlayer] = useState('');
+  const [cardId, setCardId] = useState<string | null>(null);
+  const [year, setYear] = useState('');
+  const [sport, setSport] = useState<string>('Baseball');
+  const [setName, setSetName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [parallel, setParallel] = useState('');
+  const [isRookie, setIsRookie] = useState(false);
+  const [isAutograph, setIsAutograph] = useState(false);
+  const [conditionType, setConditionType] = useState<'raw' | 'graded'>('raw');
+  const [gradingCompany, setGradingCompany] = useState<string>('PSA');
+  const [gradingCompanyOther, setGradingCompanyOther] = useState('');
+  const [grade, setGrade] = useState<number | null>(null);
+  const [certNumber, setCertNumber] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(todayIsoDate());
+  const [purchaseSource, setPurchaseSource] = useState<string>('');
+  const [purchaseUrl, setPurchaseUrl] = useState('');
+  const [notes, setNotes] = useState('');
+  const [gradeSessionId, setGradeSessionId] = useState<string | null>(null);
+  const [subGrades, setSubGrades] = useState<GraderSessionPrefill['subGrades']>(null);
+  const [prefillImageUrl, setPrefillImageUrl] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [uploadKey, setUploadKey] = useState(0);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [savedCardId, setSavedCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPrefill() {
+      try {
+        const response = await fetch(`/api/grader/session/${sessionId}`);
+        const data = await readJsonResponse<GraderSessionPrefill & { error?: string }>(response);
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        setGradeSessionId(data.sessionId);
+        setConditionType('raw');
+        setGrade(null);
+        setGradingCompany('PSA');
+        setCertNumber('');
+        setSubGrades(data.subGrades);
+        setPrefillImageUrl(data.frontImageUrl);
+        setNotes(composeGraderPrefillNotes(data, queryGrade, queryCompany));
+      } catch {
+        // Prefill is optional.
+      }
+    }
+
+    void loadPrefill();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, queryGrade, queryCompany]);
+
+  function handleSelectCard(card: CardSearchResult) {
+    setCardId(card.id);
+    if (card.year) {
+      setYear(String(card.year));
+    }
+    if (card.set_name) {
+      setSetName(card.set_name);
+    }
+  }
+
+  function resetForAnother() {
+    const keepSport = sport;
+    setPlayer('');
+    setCardId(null);
+    setYear('');
+    setSport(keepSport);
+    setSetName('');
+    setCardNumber('');
+    setParallel('');
+    setIsRookie(false);
+    setIsAutograph(false);
+    setConditionType('raw');
+    setGradingCompany('PSA');
+    setGradingCompanyOther('');
+    setGrade(null);
+    setCertNumber('');
+    setPurchasePrice('');
+    setPurchaseDate(todayIsoDate());
+    setPurchaseSource('');
+    setPurchaseUrl('');
+    setNotes('');
+    setGradeSessionId(null);
+    setSubGrades(null);
+    setPrefillImageUrl(null);
+    setPhotoFile(null);
+    setUploadKey((k) => k + 1);
+    setError('');
+    setSaved(false);
+    setSavedCardId(null);
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!player.trim()) {
+      setError('Player name is required.');
+      return;
+    }
+
+    if (conditionType === 'graded') {
+      if (!grade) {
+        setError('Select a grade for graded cards.');
+        return;
+      }
+      const company = gradingCompany === 'Other' ? gradingCompanyOther.trim() : gradingCompany;
+      if (!company) {
+        setError('Select a grading company.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      let frontImageUrl = prefillImageUrl;
+
+      if (photoFile) {
+        const formData = new FormData();
+        formData.set('image', photoFile);
+        const uploadResponse = await fetch('/api/collection/image', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await readJsonResponse<{ imageUrl?: string; error?: string }>(uploadResponse);
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData.error ?? 'Unable to upload photo.');
+        }
+        frontImageUrl = uploadData.imageUrl ?? frontImageUrl;
+      }
+
+      const resolvedCompany =
+        conditionType === 'graded'
+          ? gradingCompany === 'Other'
+            ? gradingCompanyOther.trim()
+            : gradingCompany
+          : null;
+
+      const response = await fetch('/api/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardId,
+          player: player.trim(),
+          year: year.trim() ? Number.parseInt(year, 10) : null,
+          sport,
+          setName: setName.trim() || null,
+          cardNumber: cardNumber.trim() || null,
+          parallel: parallel.trim() || null,
+          isRookie,
+          isAutograph,
+          conditionType,
+          gradingCompany: resolvedCompany,
+          grade: conditionType === 'graded' ? grade : null,
+          certNumber: certNumber.trim() || null,
+          subGrades: conditionType === 'raw' ? subGrades : null,
+          gradeSessionId,
+          frontImageUrl,
+          purchasePrice: purchasePrice.trim() ? Number.parseFloat(purchasePrice) : null,
+          purchaseDate: purchaseDate || null,
+          purchaseSource: purchaseSource || null,
+          purchaseUrl: purchaseUrl.trim() || null,
+          notes: notes.trim() || null,
+        }),
+      });
+
+      const data = await readJsonResponse<{ collectionCardId?: string; error?: string }>(response);
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Unable to add card.');
+      }
+
+      setSavedCardId(data.collectionCardId ?? null);
+      setSaved(true);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Unable to add card.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (saved) {
+    return (
+      <section className="mx-auto max-w-lg space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-soft">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Check className="h-8 w-8" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Added!</h1>
+        <p className="text-sm text-slate-600">Your card was saved to your collection.</p>
+        <div className="flex flex-col gap-3 pt-2">
+          <button
+            type="button"
+            onClick={resetForAnother}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Add Another Card
+          </button>
+          <Link
+            href="/collection"
+            className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            View Collection
+          </Link>
+        </div>
+        {savedCardId ? (
+          <p className="text-xs text-slate-400">Saved as {savedCardId.slice(0, 8)}…</p>
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-2xl space-y-8">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Collection</p>
+        <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-slate-950">
+          Add Card
+        </h1>
+        <p className="text-slate-600">Add a card in under 30 seconds — only player name is required.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft md:p-8">
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Card identity
+          </legend>
+          <PlayerAutocomplete
+            value={player}
+            onChange={(value) => {
+              setPlayer(value);
+              setCardId(null);
+            }}
+            onSelectCard={handleSelectCard}
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">
+              Year
+              <input
+                type="number"
+                min={1900}
+                max={2030}
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              />
+            </label>
+            <div>
+              <ButtonGroup
+                label="Sport"
+                options={SPORTS}
+                value={sport}
+                onChange={setSport}
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+            Set details (optional)
+          </summary>
+          <div className="mt-4 space-y-4">
+            <label className="block text-sm font-medium text-slate-700">
+              Set name
+              <input
+                type="text"
+                value={setName}
+                onChange={(e) => setSetName(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Card number
+                <input
+                  type="text"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  placeholder='e.g. "247"'
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Parallel
+                <input
+                  type="text"
+                  value={parallel}
+                  onChange={(e) => setParallel(e.target.value)}
+                  placeholder="Gold Refractor"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={isRookie} onChange={(e) => setIsRookie(e.target.checked)} />
+                Rookie card
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={isAutograph} onChange={(e) => setIsAutograph(e.target.checked)} />
+                Autograph
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Condition
+          </legend>
+          <ButtonGroup
+            options={[
+              { value: 'raw', label: 'Raw' },
+              { value: 'graded', label: 'Graded' },
+            ]}
+            value={conditionType}
+            onChange={(value) => setConditionType(value as 'raw' | 'graded')}
+          />
+          {conditionType === 'graded' ? (
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+              <ButtonGroup
+                label="Grading company"
+                options={GRADING_COMPANIES}
+                value={gradingCompany}
+                onChange={setGradingCompany}
+              />
+              {gradingCompany === 'Other' ? (
+                <input
+                  type="text"
+                  value={gradingCompanyOther}
+                  onChange={(e) => setGradingCompanyOther(e.target.value)}
+                  placeholder="Company name"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              ) : null}
+              <GradeChips value={grade} onChange={setGrade} />
+              <label className="block text-sm font-medium text-slate-700">
+                Cert number (optional)
+                <input
+                  type="text"
+                  value={certNumber}
+                  onChange={(e) => setCertNumber(e.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              </label>
+            </div>
+          ) : null}
+        </fieldset>
+
+        <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+            Purchase info (optional)
+          </summary>
+          <div className="mt-4 space-y-4">
+            <label className="block text-sm font-medium text-slate-700">
+              Purchase price
+              <div className="relative mt-2">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={purchasePrice}
+                  onChange={(e) => setPurchasePrice(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-8 pr-4 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Date purchased
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              />
+            </label>
+            <ButtonGroup
+              label="Purchased from"
+              options={[
+                { value: '', label: 'None' },
+                ...PURCHASE_SOURCES.map((source) => ({ value: source, label: source })),
+              ]}
+              value={purchaseSource}
+              onChange={setPurchaseSource}
+            />
+            <label className="block text-sm font-medium text-slate-700">
+              Original listing URL
+              <input
+                type="url"
+                value={purchaseUrl}
+                onChange={(e) => setPurchaseUrl(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              />
+            </label>
+          </div>
+        </details>
+
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Photo (optional)
+          </legend>
+          {prefillImageUrl && !photoFile ? (
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <img src={prefillImageUrl} alt="From grader" className="h-20 w-14 rounded-lg object-cover" />
+              <p className="text-sm text-slate-600">Using photo from AI grader session. Upload below to replace.</p>
+            </div>
+          ) : null}
+          <ImageUpload
+            key={uploadKey}
+            onImageSelected={(file) => setPhotoFile(file)}
+            accept="image/*"
+            maxSizeMB={10}
+          />
+        </fieldset>
+
+        <label className="block text-sm font-medium text-slate-700">
+          Notes (optional)
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+          />
+        </label>
+
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Add to Collection
+        </button>
+      </form>
+
+      <Link href="/collection" className="text-sm font-medium text-brand-600 hover:underline">
+        Back to collection
+      </Link>
+    </section>
+  );
+}
+
+export default function AddCardPage() {
+  return (
+    <Suspense fallback={<p className="text-slate-600">Loading form...</p>}>
+      <AddCardForm />
+    </Suspense>
+  );
+}

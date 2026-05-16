@@ -133,7 +133,7 @@ export default function ScannerPage() {
                 Graded Card Scanner
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Upload a photo of your graded slab to identify the card and verify cert details for PSA, BGS, and SGC.
+                Upload a photo of your graded slab to read the cert number and verify details for PSA and BGS slabs. SGC scans read the label only — verify on gosgc.com and save manually.
               </p>
               <Link
                 href="/scanner/history"

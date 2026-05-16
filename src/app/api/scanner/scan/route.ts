@@ -370,7 +370,7 @@ async function handleScanRequest(req: Request) {
       : resolvedGradingCompany ?? 'PSA'
   );
 
-  if (lookupCertNumber && lookupCompany !== 'CGC') {
+  if (lookupCertNumber && lookupCompany !== 'CGC' && lookupCompany !== 'SGC') {
     const lookupOutcome = await lookupCertWithStatus(lookupCertNumber, lookupCompany);
 
     if (lookupOutcome.ok) {
@@ -426,6 +426,12 @@ async function handleScanRequest(req: Request) {
     finalResult = {
       ...finalResult,
       error: 'CGC cert lookup is not available yet. You can still save this scan manually after entering details.',
+    };
+  } else if (lookupCompany === 'SGC') {
+    finalResult = {
+      ...finalResult,
+      error:
+        'SGC cert lookup is not supported. We read your cert number from the label — verify on gosgc.com and save this scan manually.',
     };
   } else if (ocrCertNumber && !isPlausibleCertNumber(ocrCertNumber)) {
     finalResult = {
