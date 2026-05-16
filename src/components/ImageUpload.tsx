@@ -1,6 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
+import React from 'react';
 import { Camera, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
@@ -16,7 +17,6 @@ export function ImageUpload({
   maxSizeMB = 10,
 }: ImageUploadProps) {
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const previewRef = useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [fileName, setFileName] = useState('');
@@ -34,10 +34,6 @@ export function ImageUpload({
     if (previewRef.current) {
       URL.revokeObjectURL(previewRef.current);
       previewRef.current = null;
-    }
-
-    if (inputRef.current) {
-      inputRef.current.value = '';
     }
 
     setPreviewUrl('');
@@ -66,30 +62,19 @@ export function ImageUpload({
 
   return (
     <div className="space-y-3">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => inputRef.current?.click()}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
-        className="group relative overflow-hidden rounded-[1.75rem] border border-dashed border-slate-300 bg-gradient-to-br from-white to-slate-50 p-6 text-left shadow-[0_16px_45px_rgba(15,23,42,0.06)] transition-colors hover:border-brand-300"
-      >
+      <div className="group relative overflow-hidden rounded-[1.75rem] border border-dashed border-slate-300 bg-gradient-to-br from-white to-slate-50 p-6 text-left shadow-[0_16px_45px_rgba(15,23,42,0.06)] transition-colors hover:border-brand-300">
         <input
-          ref={inputRef}
           id={inputId}
           type="file"
           accept={accept}
           capture="environment"
-          className="hidden"
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          aria-label="Upload slab photo"
           onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
         />
 
         {previewUrl ? (
-          <div className="grid gap-4 md:grid-cols-[180px_1fr] md:items-center">
+          <div className="relative z-0 grid gap-4 md:grid-cols-[180px_1fr] md:items-center">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
               <img src={previewUrl} alt="Selected slab preview" className="h-52 w-full object-cover" />
             </div>
@@ -107,7 +92,7 @@ export function ImageUpload({
                   event.stopPropagation();
                   clearSelection();
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
+                className="relative z-20 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
               >
                 <X className="h-4 w-4" />
                 Remove image
@@ -115,7 +100,7 @@ export function ImageUpload({
             </div>
           </div>
         ) : (
-          <div className="flex min-h-[260px] flex-col justify-center">
+          <div className="relative z-0 flex min-h-[260px] flex-col justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-soft">
               <Camera className="h-6 w-6" />
             </div>
