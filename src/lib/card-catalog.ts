@@ -6,6 +6,7 @@ type CardInput = {
   sport?: string;
   manufacturer?: string;
   set_name?: string;
+  setName?: string;
   card_number?: string;
   parallel?: string | null;
   is_rookie?: boolean;
@@ -35,7 +36,7 @@ export async function findOrCreateCard(fields: CardInput) {
     year: fields.year ?? null,
     sport: normalizeText(fields.sport),
     manufacturer: normalizeText(fields.manufacturer),
-    set_name: normalizeText(fields.set_name),
+    set_name: normalizeText(fields.set_name ?? fields.setName),
     card_number: normalizeText(fields.card_number),
     parallel: normalizeText(fields.parallel),
     is_rookie: fields.is_rookie ?? false,

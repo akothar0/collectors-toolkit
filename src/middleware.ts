@@ -9,7 +9,7 @@ export default clerkReady
         await auth.protect();
       }
     })
-  : function proxy() {
+  : function middleware() {
       return NextResponse.next();
     };
 
@@ -19,3 +19,4 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 };
+

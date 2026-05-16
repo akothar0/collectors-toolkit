@@ -4,7 +4,7 @@ function todayUtc() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function checkRateLimit(
+export async function getRateLimitStatus(
   userId: string,
   action: string,
   dailyMax: number
@@ -12,7 +12,7 @@ export async function checkRateLimit(
   const supabase = createServiceClient();
   const date = todayUtc();
 
-  const { data: existing, error: readError } = await supabase
+  const { data: existing, error } = await supabase
     .from('usage_logs')
     .select('count')
     .eq('user_id', userId)
@@ -20,19 +20,41 @@ export async function checkRateLimit(
     .eq('date', date)
     .maybeSingle();
 
-  if (readError) {
+  if (error) {
+    return {
+      allowed: false,
+      used: 0,
+      remaining: 0,
+      error,
+    };
+  }
+
+  const used = existing?.count ?? 0;
+  const remaining = Math.max(dailyMax - used, 0);
+
+  return {
+    allowed: used < dailyMax,
+    used,
+    remaining,
+  };
+}
+
+export async function checkRateLimit(
+  userId: string,
+  action: string,
+  dailyMax: number
+) {
+  const supabase = createServiceClient();
+  const date = todayUtc();
+  const status = await getRateLimitStatus(userId, action, dailyMax);
+
+  if (!status.allowed) {
     return false;
   }
 
-  const currentCount = existing?.count ?? 0;
+  const nextCount = status.used + 1;
 
-  if (currentCount >= dailyMax) {
-    return false;
-  }
-
-  const nextCount = currentCount + 1;
-
-  if (currentCount === 0) {
+  if (status.used === 0) {
     const { error: insertError } = await supabase.from('usage_logs').insert({
       user_id: userId,
       action,
@@ -52,4 +74,3 @@ export async function checkRateLimit(
 
   return !updateError;
 }
-
