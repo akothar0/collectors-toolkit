@@ -5,7 +5,6 @@ type RawRow = {
   title?: unknown;
   price?: unknown;
   date?: unknown;
-  orderId?: unknown;
 };
 
 function toText(v: unknown) {
@@ -23,15 +22,25 @@ function stripFanaticsPrefix(title: string): string {
   return title.replace(/^WA\d+\s+Lot\s+#[\w]+:\s*/i, '').trim();
 }
 
+// Find the first array value in a JSON object regardless of key name.
+// Needed because json_object format forces a wrapper — model may use any key.
+function extractArray(parsed: Record<string, unknown>): RawRow[] {
+  if (Array.isArray(parsed)) return parsed as RawRow[];
+  const arrayValue = Object.values(parsed).find(Array.isArray);
+  return (arrayValue as RawRow[] | undefined) ?? [];
+}
+
 const PROMPT = `This is text extracted from a Fanatics Collect order invoice PDF.
-Extract every individual card purchase listed as a line item.
 
-For each card return:
-{ "title": string, "price": number | null, "date": string | null, "orderId": string | null }
+Extract every purchased line item — graded cards, raw cards, AND sealed hobby/mega boxes.
+For each line item return an object with these exact keys:
+  "title": the full item title starting with "WA###" if present
+  "price": the numeric price (number, not string)
+  "date": the order date found in the document header (apply same date to all items)
 
-Line item titles often start with "WA### Lot #####:" — include the full title as-is.
-Return a JSON array. Skip shipping, taxes, buyer's premium, order totals, and any line that is not a card or sealed product.
-If price is missing, use null.`;
+Return a JSON object with key "items" containing the array of line item objects.
+Skip only: the order total line, shipping charges, taxes, and buyer's premium.
+Include everything else — cards, boxes, and sealed products all belong in items.`;
 
 export async function parseFanaticsPDF(pdfBuffer: Buffer): Promise<ParsedImportItem[]> {
   // unpdf works in Node.js/serverless without browser DOM globals (unlike pdf-parse)
@@ -60,8 +69,7 @@ export async function parseFanaticsPDF(pdfBuffer: Buffer): Promise<ParsedImportI
   let rows: RawRow[] = [];
   try {
     const parsed = JSON.parse(responseText) as Record<string, unknown>;
-    const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? (parsed.items as RawRow[]) : [];
-    rows = arr as RawRow[];
+    rows = extractArray(parsed);
   } catch {
     return [];
   }
@@ -72,14 +80,13 @@ export async function parseFanaticsPDF(pdfBuffer: Buffer): Promise<ParsedImportI
       return {
         rawTitle: raw,
         rawPrice: toPrice(row.price),
-        rawDate: toText(row.date) ?? toText(row.orderId),
+        rawDate: toText(row.date),
         rawSource: 'Fanatics',
       };
     })
     .filter((item) => item.rawTitle.length > 0)
     .map((item) => ({
       ...item,
-      // Keep raw title intact; normalize() will parse it
       rawTitle: stripFanaticsPrefix(item.rawTitle) || item.rawTitle,
     }));
 }
