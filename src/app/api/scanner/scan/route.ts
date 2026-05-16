@@ -3,14 +3,13 @@ import { findOrCreateCard } from '@/lib/card-catalog';
 import { lookupPSACert } from '@/lib/cert-lookup/psa';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
+import { SCAN_LIMIT } from '@/lib/scanner-limit';
 import { createServiceClient } from '@/lib/supabase';
 import { inferConfidence, parseScannerOcrResponse } from '@/lib/scanner-ocr';
 import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-
-const SCAN_LIMIT = 10;
 
 async function getOrCreateUserId(clerkId: string, email: string | null) {
   const supabase = createServiceClient();

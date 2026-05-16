@@ -1,9 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getRateLimitStatus } from '@/lib/rate-limit';
+import { SCAN_LIMIT } from '@/lib/scanner-limit';
 import { createServiceClient } from '@/lib/supabase';
-
-const SCAN_LIMIT = 10;
 
 async function getOrCreateUserId(clerkId: string, email: string | null) {
   const supabase = createServiceClient();
@@ -50,4 +49,3 @@ export async function GET() {
     dailyLimit: SCAN_LIMIT,
   });
 }
-
