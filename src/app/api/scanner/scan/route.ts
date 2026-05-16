@@ -1,12 +1,13 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { findOrCreateCard } from '@/lib/card-catalog';
-import { lookupPSACertWithRecovery } from '@/lib/cert-lookup/psa';
+import { lookupPSACert } from '@/lib/cert-lookup/psa';
 import { normalizeCertNumber } from '@/lib/cert-number';
+import { readSlabLabel } from '@/lib/slab-ocr';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
 import { SCAN_LIMIT } from '@/lib/scanner-limit';
 import { createServiceClient } from '@/lib/supabase';
-import { inferConfidence, parseScannerOcrResponse } from '@/lib/scanner-ocr';
+import { inferConfidence } from '@/lib/scanner-ocr';
 import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
 import { isConfigurationError, scannerErrorResponse } from '@/lib/scanner-api';
 import { NextResponse } from 'next/server';
@@ -79,66 +80,6 @@ async function uploadScanImage(userId: string, imageFile: File) {
 
   const { data } = supabase.storage.from('card-images').getPublicUrl(path);
   return data.publicUrl;
-}
-
-async function callSlabOcr(imageUrl: string) {
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured.');
-  }
-
-  const prompt =
-    'This is a photo of a graded sports card in a protective case (slab). Read the label carefully and extract: (1) the full certification number — copy every digit exactly, with no spaces or punctuation. PSA cert numbers are usually 8 or 9 digits; do not drop trailing digits. (2) the grading company — one of PSA, BGS, SGC, or CGC. Return ONLY a JSON object: { certNumber: string | null, gradingCompany: \'PSA\' | \'BGS\' | \'SGC\' | \'CGC\' | \'UNKNOWN\' } If you cannot read the cert number clearly, return certNumber as null.';
-
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      input: [
-        {
-          role: 'user',
-          content: [
-            { type: 'input_text', text: prompt },
-            {
-              type: 'input_image',
-              image_url: imageUrl,
-              detail: 'high',
-            },
-          ],
-        },
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'slab_ocr',
-          strict: true,
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              certNumber: { anyOf: [{ type: 'string' }, { type: 'null' }] },
-              gradingCompany: {
-                type: 'string',
-                enum: ['PSA', 'BGS', 'SGC', 'CGC', 'UNKNOWN'],
-              },
-            },
-            required: ['certNumber', 'gradingCompany'],
-          },
-        },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI Responses API returned ${response.status}: ${await response.text()}`);
-  }
-
-  return response.json();
 }
 
 type ScanRowPayload = Partial<ScannerResult> & {
@@ -286,8 +227,7 @@ async function handleScanRequest(req: Request) {
     uploadedImageUrl = resolveStoredScanImageUrl(uploadedImageUrl, fallbackImageUrl);
 
     try {
-      const response = await callSlabOcr(openAiImageUrl);
-      const parsed = parseScannerOcrResponse(response);
+      const parsed = await readSlabLabel(openAiImageUrl);
       if (parsed) {
         ocrCertNumber = parsed.certNumber;
         ocrGradingCompany = parsed.gradingCompany;
@@ -356,18 +296,22 @@ async function handleScanRequest(req: Request) {
     };
   }
 
-  const lookupCertNumber = manualCert || ocrCertNumber;
-  const lookupAllowed = lookupCertNumber && (manualCert || ocrGradingCompany === 'PSA');
+  const autoLookup =
+    !manualCert &&
+    ocrConfidence === 'high' &&
+    ocrGradingCompany === 'PSA' &&
+    Boolean(ocrCertNumber);
 
-  if (lookupAllowed) {
-    const { result: psaResult, correctedFrom } = await lookupPSACertWithRecovery(lookupCertNumber);
+  const lookupCertNumber = manualCert || (autoLookup ? ocrCertNumber : null);
+
+  if (lookupCertNumber && (manualCert || autoLookup)) {
+    const psaResult = await lookupPSACert(lookupCertNumber);
 
     if (psaResult) {
       finalResult = {
         ...finalResult,
         certLookupSuccess: true,
         certNumber: psaResult.certNumber,
-        certCorrectedFrom: correctedFrom,
         gradingCompany: 'PSA',
         itemStatus: 'Y',
         cardPlayer: psaResult.player,
@@ -385,7 +329,6 @@ async function handleScanRequest(req: Request) {
         popAtGrade: psaResult.popAtGrade,
         popWithQualifier: psaResult.popWithQualifier,
         popHigher: psaResult.popHigher,
-        psaSpecId: psaResult.psaSpecId,
         error: undefined,
       };
 
@@ -420,23 +363,21 @@ async function handleScanRequest(req: Request) {
           error: 'We found the PSA cert, but could not save the card details. You can still save manually.',
         };
       }
-    } else {
+    } else if (manualCert) {
       finalResult = {
         ...finalResult,
-        error: lookupCertNumber
-          ? 'Cert lookup unavailable. Enter card details to save manually.'
-          : 'We could not read the cert number. Try again with a clearer photo or enter it manually.',
+        error: 'PSA could not find that cert number. Check the number and try again.',
       };
     }
-  } else if (ocrCertNumber) {
+  } else if (!ocrCertNumber) {
     finalResult = {
       ...finalResult,
-      error: 'This scanner currently verifies PSA slabs only. Enter the cert number manually if you want to try again.',
+      error: 'We could not read a cert number from the label. Enter your PSA cert number below.',
     };
-  } else {
+  } else if (ocrGradingCompany && ocrGradingCompany !== 'PSA') {
     finalResult = {
       ...finalResult,
-      error: 'We could not read the slab label. Try again or enter the cert number manually.',
+      error: 'This scanner currently supports PSA slabs only.',
     };
   }
 

@@ -1,22 +1,19 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { Loader2, RotateCcw, Save, Search } from 'lucide-react';
-import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { ExternalLink, Loader2, RotateCcw, Save, Search } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { readJsonResponse } from '@/lib/http-json';
-import type { ScannerResult } from '@/lib/scanner';
 import { getPSACertUrl } from '@/lib/cert-number';
 import {
-  buildPopulationRows,
-  buildScanDetailRows,
   confidenceLabel,
   formatCatalogText,
   formatGradeValue,
-  getCertCorrectionMessage,
-  getScanHeadline,
-  getScanStatus,
-  getScanSubheadline,
+  getVerifiedSubtitle,
+  getVerifiedTitle,
+  needsCertConfirmation,
 } from '@/lib/scanner-presenter';
+import type { ScannerResult } from '@/lib/scanner';
 
 type ScanResultProps = {
   scan: ScannerResult;
@@ -24,148 +21,41 @@ type ScanResultProps = {
   onQuotaUpdate?: (remaining: number) => void;
 };
 
-type SaveFormState = {
-  player: string;
-  year: string;
-  setName: string;
-  parallel: string;
-  cardNumber: string;
-  sport: string;
-  manufacturer: string;
-  certNumber: string;
-  gradingCompany: string;
-  grade: string;
-  gradeDescription: string;
-  qualifierCode: string;
-  autographGrade: string;
-  popAtGrade: string;
-  popHigher: string;
-  purchasePrice: string;
-  purchaseDate: string;
-  notes: string;
-};
-
-type DetailRow = { label: string; value: string; href?: string | null };
-
-function buildSaveForm(scan: ScannerResult): SaveFormState {
-  return {
-    player: scan.cardPlayer ?? '',
-    year: scan.cardYear?.toString() ?? '',
-    setName: scan.cardSet ?? '',
-    parallel: scan.cardParallel ?? '',
-    cardNumber: scan.cardNumber ?? '',
-    sport: scan.cardSport ?? '',
-    manufacturer: scan.cardManufacturer ?? '',
-    certNumber: scan.certNumber ?? scan.ocrCertNumber ?? '',
-    gradingCompany: scan.gradingCompany ?? scan.ocrGradingCompany ?? '',
-    grade: scan.officialGrade?.toString() ?? '',
-    gradeDescription: scan.gradeDescription ?? '',
-    qualifierCode: scan.qualifierCode ?? '',
-    autographGrade: scan.autographGrade?.toString() ?? '',
-    popAtGrade: scan.popAtGrade?.toString() ?? '',
-    popHigher: scan.popHigher?.toString() ?? '',
-    purchasePrice: '',
-    purchaseDate: '',
-    notes: '',
-  };
-}
-
-function statusStyles(status: ReturnType<typeof getScanStatus>) {
-  if (status === 'verified') {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-900';
-  }
-
-  if (status === 'partial') {
-    return 'border-amber-200 bg-amber-50 text-amber-950';
-  }
-
-  return 'border-slate-200 bg-slate-50 text-slate-700';
-}
-
-function statusLabel(status: ReturnType<typeof getScanStatus>) {
-  if (status === 'verified') {
-    return 'PSA verified';
-  }
-
-  if (status === 'partial') {
-    return 'Partial match';
-  }
-
-  return 'Needs input';
-}
-
-function DetailGrid({ rows }: { rows: DetailRow[] }) {
-  return (
-    <dl className="divide-y divide-slate-100">
-      {rows.map((row) => (
-        <DetailRowItem key={row.label} label={row.label} value={row.value} href={row.href} />
-      ))}
-    </dl>
-  );
-}
-
-function DetailRowItem({ label, value, href }: DetailRow) {
-  return (
-    <div className="grid grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)] gap-4 px-1 py-3.5">
-      <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{label}</dt>
-      <dd className="text-sm font-medium text-slate-900">
-        {href ? (
-          <a href={href} target="_blank" rel="noreferrer" className="text-brand-600 underline-offset-2 hover:underline">
-            {value}
-          </a>
-        ) : (
-          value
-        )}
-      </dd>
-    </div>
-  );
-}
-
 export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps) {
   const [result, setResult] = useState(scan);
-  const [manualCert, setManualCert] = useState(scan.ocrCertNumber ?? scan.certNumber ?? '');
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualError, setManualError] = useState('');
-  const [showSaveForm, setShowSaveForm] = useState(!scan.certLookupSuccess);
+  const [certInput, setCertInput] = useState(scan.ocrCertNumber ?? scan.certNumber ?? '');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saveError, setSaveError] = useState('');
-  const [saveForm, setSaveForm] = useState<SaveFormState>(buildSaveForm(scan));
 
   useEffect(() => {
     setResult(scan);
-    setManualCert(scan.ocrCertNumber ?? scan.certNumber ?? '');
-    setShowSaveForm(!scan.certLookupSuccess);
+    setCertInput(scan.ocrCertNumber ?? scan.certNumber ?? '');
+    setLookupError('');
     setSaveSuccess('');
     setSaveError('');
-    setManualError('');
-    setSaveForm(buildSaveForm(scan));
   }, [scan]);
 
-  const status = useMemo(() => getScanStatus(result), [result]);
-  const headline = useMemo(() => getScanHeadline(result), [result]);
-  const subheadline = useMemo(() => getScanSubheadline(result), [result]);
-  const detailRows = useMemo(() => buildScanDetailRows(result), [result]);
-  const populationRows = useMemo(() => buildPopulationRows(result), [result]);
-  const certCorrection = useMemo(() => getCertCorrectionMessage(result), [result]);
-  const psaCertUrl = useMemo(
-    () => getPSACertUrl(result.certNumber ?? result.ocrCertNumber),
-    [result.certNumber, result.ocrCertNumber]
-  );
+  const title = useMemo(() => getVerifiedTitle(result), [result]);
+  const subtitle = useMemo(() => getVerifiedSubtitle(result), [result]);
+  const showCertPrompt = useMemo(() => needsCertConfirmation(result), [result]);
+  const psaUrl = useMemo(() => getPSACertUrl(result.certNumber), [result.certNumber]);
   const hasImage = Boolean(result.imageUrl?.trim());
 
-  async function runManualLookup() {
-    if (!manualCert.trim()) {
-      setManualError('Enter a cert number first.');
+  async function lookupCert() {
+    if (!certInput.trim()) {
+      setLookupError('Enter your PSA cert number.');
       return;
     }
 
-    setManualLoading(true);
-    setManualError('');
+    setLookupLoading(true);
+    setLookupError('');
 
     try {
       const formData = new FormData();
-      formData.set('manualCertNumber', manualCert.trim());
+      formData.set('manualCertNumber', certInput.trim());
       if (result.imageUrl) {
         formData.set('imageUrl', result.imageUrl);
       }
@@ -177,435 +67,282 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
 
       const nextResult = await readJsonResponse<ScannerResult & { remainingScans?: number }>(response);
       if (!response.ok) {
-        throw new Error(nextResult.error ?? 'Lookup failed');
+        throw new Error(nextResult.error ?? 'PSA lookup failed.');
       }
 
       setResult(nextResult);
-      setShowSaveForm(!nextResult.certLookupSuccess);
-      setSaveForm(buildSaveForm(nextResult));
       if (typeof nextResult.remainingScans === 'number') {
         onQuotaUpdate?.(nextResult.remainingScans);
       }
     } catch (error) {
-      setManualError(error instanceof Error ? error.message : 'Lookup failed');
+      setLookupError(error instanceof Error ? error.message : 'PSA lookup failed.');
     } finally {
-      setManualLoading(false);
+      setLookupLoading(false);
     }
   }
 
   async function saveToCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!result.certLookupSuccess) {
+      return;
+    }
+
     setSaveLoading(true);
     setSaveError('');
     setSaveSuccess('');
 
     try {
-      const payload = {
-        scanId: result.scanId,
-        imageUrl: result.imageUrl,
-        cardId: result.cardId,
-        player: saveForm.player,
-        year: saveForm.year ? Number.parseInt(saveForm.year, 10) : null,
-        setName: saveForm.setName,
-        parallel: saveForm.parallel,
-        cardNumber: saveForm.cardNumber,
-        sport: saveForm.sport,
-        manufacturer: saveForm.manufacturer,
-        certNumber: saveForm.certNumber,
-        gradingCompany: saveForm.gradingCompany,
-        grade: saveForm.grade ? Number.parseFloat(saveForm.grade) : null,
-        gradeDescription: saveForm.gradeDescription,
-        qualifierCode: saveForm.qualifierCode,
-        autographGrade: saveForm.autographGrade ? Number.parseFloat(saveForm.autographGrade) : null,
-        popAtGrade: saveForm.popAtGrade ? Number.parseInt(saveForm.popAtGrade, 10) : null,
-        popHigher: saveForm.popHigher ? Number.parseInt(saveForm.popHigher, 10) : null,
-        purchasePrice: saveForm.purchasePrice ? Number.parseFloat(saveForm.purchasePrice) : null,
-        purchaseDate: saveForm.purchaseDate || null,
-        notes: saveForm.notes,
-        conditionType: result.certLookupSuccess ? 'graded' : 'raw',
-      };
-
       const response = await fetch('/api/collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          scanId: result.scanId,
+          imageUrl: result.imageUrl,
+          cardId: result.cardId,
+          player: result.cardPlayer,
+          year: result.cardYear,
+          setName: result.cardSet ?? result.cardManufacturer,
+          parallel: result.cardParallel,
+          cardNumber: result.cardNumber,
+          sport: result.cardSport,
+          manufacturer: result.cardManufacturer,
+          certNumber: result.certNumber,
+          gradingCompany: result.gradingCompany,
+          grade: result.officialGrade,
+          gradeDescription: result.gradeDescription,
+          qualifierCode: result.qualifierCode,
+          autographGrade: result.autographGrade,
+          popAtGrade: result.popAtGrade,
+          popHigher: result.popHigher,
+          conditionType: 'graded',
+        }),
       });
 
-      const json = await readJsonResponse<{ error?: string; collectionCardId?: string }>(response);
+      const json = await readJsonResponse<{ error?: string }>(response);
       if (!response.ok) {
-        throw new Error(json.error ?? 'Unable to save collection entry');
+        throw new Error(json.error ?? 'Unable to save.');
       }
 
-      setSaveSuccess(json.collectionCardId ? 'Saved to collection.' : 'Saved.');
-      setShowSaveForm(false);
+      setSaveSuccess('Saved to your collection.');
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to save collection entry');
+      setSaveError(error instanceof Error ? error.message : 'Unable to save.');
     } finally {
       setSaveLoading(false);
     }
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-600">Scan result</p>
-          <p className="mt-1 text-sm text-slate-500">Structured card details from your slab photo and cert lookup.</p>
-        </div>
-        <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${statusStyles(status)}`}>
-          {statusLabel(status)}
-        </span>
-      </div>
+    <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-soft">
+      <ResultHeader result={result} onTryAgain={onTryAgain} />
 
-      {certCorrection ? <InfoBanner message={certCorrection} /> : null}
-
-      {result.error && !result.certLookupSuccess ? (
-        <ErrorBanner error={result.error} onTryAgain={onTryAgain} />
-      ) : null}
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-soft">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Slab photo</p>
-          </div>
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="border-b border-slate-100 bg-slate-950 p-4 lg:border-b-0 lg:border-r">
           {hasImage ? (
-            <div className="bg-slate-950 p-3">
-              <img
-                src={result.imageUrl}
-                alt="Uploaded slab"
-                className="h-[320px] w-full rounded-[1.25rem] object-cover md:h-[420px]"
-              />
-            </div>
+            <img src={result.imageUrl} alt="Scanned slab" className="h-[280px] w-full rounded-2xl object-cover lg:h-full lg:min-h-[360px]" />
           ) : (
-            <div className="flex h-[220px] items-center justify-center bg-slate-50 px-6 text-sm text-slate-500">
-              No preview image stored for this scan.
+            <div className="flex h-[280px] items-center justify-center rounded-2xl bg-slate-900 text-sm text-slate-400">
+              No slab photo
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-            <div className="flex items-start justify-between gap-4">
-              <HeadlineBlock headline={headline} subheadline={subheadline} />
-              <div className="shrink-0 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Grade</p>
-                <p className="mt-1 text-3xl font-semibold text-slate-950">{formatGradeValue(result.officialGrade)}</p>
-                <p className="mt-1 text-xs text-slate-500">{result.gradingCompany ?? result.ocrGradingCompany ?? '—'}</p>
-              </div>
-            </div>
+        <div className="space-y-5 p-6">
+          {result.certLookupSuccess && title ? (
+            <VerifiedSummary
+              title={title}
+              subtitle={subtitle}
+              grade={result.officialGrade}
+              gradeDescription={result.gradeDescription}
+              certNumber={result.certNumber}
+              psaUrl={psaUrl}
+            />
+          ) : (
+            <PendingSummary
+              certInput={certInput}
+              confidence={result.ocrConfidence}
+              error={result.error}
+              lookupError={lookupError}
+              lookupLoading={lookupLoading}
+              ocrCert={result.ocrCertNumber}
+              showCertPrompt={showCertPrompt}
+              onCertChange={setCertInput}
+              onLookup={lookupCert}
+            />
+          )}
 
-            {result.gradeDescription ? (
-              <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                {formatCatalogText(result.gradeDescription)}
-              </p>
-            ) : null}
-
-            {psaCertUrl ? (
-              <a
-                href={psaCertUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex text-sm font-medium text-brand-600 underline-offset-2 hover:underline"
+          {result.certLookupSuccess ? (
+            <form className="space-y-3 border-t border-slate-100 pt-5" onSubmit={saveToCollection}>
+              <button
+                type="submit"
+                disabled={saveLoading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-70"
               >
-                View on PSA →
-              </a>
-            ) : null}
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                {confidenceLabel(result.ocrConfidence)}
-              </span>
-              {result.ocrCertNumber ? (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  OCR cert {result.ocrCertNumber}
-                </span>
-              ) : null}
-              {result.isDualCert ? (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  Dual cert
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Card details</p>
-            <DetailGrid rows={detailRows} />
-          </div>
-
-          {populationRows.length > 0 ? (
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Population</p>
-              <DetailGrid rows={populationRows} />
-            </div>
+                {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save to collection
+              </button>
+              {saveError ? <p className="text-sm text-rose-600">{saveError}</p> : null}
+              {saveSuccess ? <p className="text-sm text-emerald-700">{saveSuccess}</p> : null}
+            </form>
           ) : null}
         </div>
       </div>
-
-      {!result.certLookupSuccess ? (
-        <ManualLookupPanel
-          manualCert={manualCert}
-          manualError={manualError}
-          manualLoading={manualLoading}
-          onCertChange={setManualCert}
-          onLookup={runManualLookup}
-        />
-      ) : null}
-
-      <SavePanel
-        result={result}
-        showSaveForm={showSaveForm}
-        saveForm={saveForm}
-        saveLoading={saveLoading}
-        saveError={saveError}
-        saveSuccess={saveSuccess}
-        onToggleSave={() => setShowSaveForm((current) => !current)}
-        onSave={saveToCollection}
-        onSaveFormChange={setSaveForm}
-      />
     </section>
   );
 }
 
-function InfoBanner({ message }: { message: string }) {
+function ResultHeader({ result, onTryAgain }: { result: ScannerResult; onTryAgain?: () => void }) {
   return (
-    <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-7 text-sky-950">
-      {message}
-    </div>
-  );
-}
-
-function ErrorBanner({ error, onTryAgain }: { error: string; onTryAgain?: () => void }) {
-  return (
-    <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4">
-      <p className="text-sm leading-7 text-amber-950">{error}</p>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Scan result</p>
+        <p className="mt-1 text-sm text-slate-500">
+          {result.certLookupSuccess ? 'PSA verified' : 'Confirm your PSA cert number'}
+        </p>
+      </div>
       {onTryAgain ? (
         <button
           type="button"
           onClick={onTryAgain}
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-900"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
           <RotateCcw className="h-4 w-4" />
-          Scan another slab
+          Scan again
         </button>
       ) : null}
     </div>
   );
 }
 
-function HeadlineBlock({ headline, subheadline }: { headline: string; subheadline: string | null }) {
+function VerifiedSummary({
+  title,
+  subtitle,
+  grade,
+  gradeDescription,
+  certNumber,
+  psaUrl,
+}: {
+  title: string;
+  subtitle: string | null;
+  grade: number | null;
+  gradeDescription: string | null;
+  certNumber: string | null;
+  psaUrl: string | null;
+}) {
   return (
-    <div className="min-w-0">
-      <h2 className="truncate text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{headline}</h2>
-      {subheadline ? <p className="mt-2 text-sm text-slate-500">{subheadline}</p> : null}
+    <div className="space-y-4">
+      <SummaryTop title={title} subtitle={subtitle} grade={grade} />
+      {gradeDescription ? (
+        <p className="text-sm text-slate-600">{formatCatalogText(gradeDescription)}</p>
+      ) : null}
+      <div className="rounded-xl bg-slate-50 px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">PSA cert</p>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <p className="text-lg font-semibold tracking-tight text-slate-950">{certNumber}</p>
+          {psaUrl ? (
+            <a
+              href={psaUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+            >
+              View on PSA
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
 
-function ManualLookupPanel({
-  manualCert,
-  manualError,
-  manualLoading,
+function SummaryTop({
+  title,
+  subtitle,
+  grade,
+}: {
+  title: string;
+  subtitle: string | null;
+  grade: number | null;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{title}</h2>
+        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+      </div>
+      <GradeBadge grade={grade} />
+    </div>
+  );
+}
+
+function GradeBadge({ grade }: { grade: number | null }) {
+  return (
+    <div className="shrink-0 rounded-2xl bg-brand-50 px-4 py-3 text-right ring-1 ring-brand-100">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">PSA</p>
+      <p className="text-3xl font-semibold text-slate-950">{formatGradeValue(grade)}</p>
+    </div>
+  );
+}
+
+function PendingSummary({
+  certInput,
+  confidence,
+  error,
+  lookupError,
+  lookupLoading,
+  ocrCert,
+  showCertPrompt,
   onCertChange,
   onLookup,
 }: {
-  manualCert: string;
-  manualError: string;
-  manualLoading: boolean;
+  certInput: string;
+  confidence: ScannerResult['ocrConfidence'];
+  error?: string;
+  lookupError: string;
+  lookupLoading: boolean;
+  ocrCert: string | null;
+  showCertPrompt: boolean;
   onCertChange: (value: string) => void;
   onLookup: () => void;
 }) {
   return (
-    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Manual PSA lookup</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        PSA lookup did not complete. Confirm the full cert number — PSA certs are usually 8 or 9 digits.
-      </p>
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-        <input
-          value={manualCert}
-          onChange={(event) => onCertChange(event.target.value)}
-          inputMode="numeric"
-          placeholder="Cert number"
-          className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:border-brand-300"
-        />
-        <button
-          type="button"
-          onClick={onLookup}
-          disabled={manualLoading}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {manualLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          Look up cert
-        </button>
-      </div>
-      {manualError ? <p className="mt-3 text-sm text-rose-600">{manualError}</p> : null}
-    </div>
-  );
-}
+    <div className="space-y-4">
+      {error ? <p className="text-sm leading-6 text-amber-800">{error}</p> : null}
 
-function SavePanel({
-  result,
-  showSaveForm,
-  saveForm,
-  saveLoading,
-  saveError,
-  saveSuccess,
-  onToggleSave,
-  onSave,
-  onSaveFormChange,
-}: {
-  result: ScannerResult;
-  showSaveForm: boolean;
-  saveForm: SaveFormState;
-  saveLoading: boolean;
-  saveError: string;
-  saveSuccess: string;
-  onToggleSave: () => void;
-  onSave: (event: FormEvent<HTMLFormElement>) => void;
-  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
-}) {
-  return (
-    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Collection</p>
-          <p className="mt-1 text-sm text-slate-600">
-            {result.certLookupSuccess
-              ? 'Save this verified slab to your collection.'
-              : 'Add card details manually if cert lookup did not complete.'}
+      {showCertPrompt ? (
+        <>
+          <p className="text-sm text-slate-600">
+            {confidence === 'medium' || confidence === 'low'
+              ? 'We read a possible cert number from the label. Confirm it below to fetch from PSA.'
+              : 'PSA could not verify the detected cert. Check the number and try again.'}
           </p>
-        </div>
-        {result.certLookupSuccess ? (
-          <button
-            type="button"
-            onClick={onToggleSave}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
-          >
-            <Save className="h-4 w-4" />
-            {showSaveForm ? 'Hide form' : 'Save to collection'}
-          </button>
-        ) : null}
-      </div>
-
-      {(showSaveForm || !result.certLookupSuccess) && (
-        <form className="mt-5 space-y-4" onSubmit={onSave}>
-          {!result.certLookupSuccess ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                value={saveForm.player}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, player: event.target.value }))}
-                placeholder="Player"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.year}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, year: event.target.value }))}
-                placeholder="Year"
-                inputMode="numeric"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.setName}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, setName: event.target.value }))}
-                placeholder="Set"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.parallel}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, parallel: event.target.value }))}
-                placeholder="Parallel"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.cardNumber}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, cardNumber: event.target.value }))}
-                placeholder="Card #"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.gradingCompany}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, gradingCompany: event.target.value }))}
-                placeholder="Grading company"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.grade}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, grade: event.target.value }))}
-                placeholder="Grade"
-                inputMode="decimal"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-              <input
-                value={saveForm.certNumber}
-                onChange={(event) => onSaveFormChange((current) => ({ ...current, certNumber: event.target.value }))}
-                placeholder="Cert #"
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-              />
-            </div>
+          {ocrCert ? (
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+              {confidenceLabel(confidence)}
+              {ocrCert ? ` · detected ${ocrCert}` : ''}
+            </p>
           ) : null}
-
-          <PurchaseFields saveForm={saveForm} onSaveFormChange={onSaveFormChange} />
-
-          <button
-            type="submit"
-            disabled={saveLoading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save to collection
-          </button>
-          {saveError ? <p className="text-sm text-rose-600">{saveError}</p> : null}
-          {saveSuccess ? <p className="text-sm text-emerald-700">{saveSuccess}</p> : null}
-        </form>
-      )}
-    </div>
-  );
-}
-
-function PurchaseFields({
-  saveForm,
-  onSaveFormChange,
-}: {
-  saveForm: SaveFormState;
-  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
-}) {
-  return (
-    <>
-      <PurchaseInputs saveForm={saveForm} onSaveFormChange={onSaveFormChange} />
-      <textarea
-        value={saveForm.notes}
-        onChange={(event) => onSaveFormChange((current) => ({ ...current, notes: event.target.value }))}
-        placeholder="Notes"
-        rows={4}
-        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-300"
-      />
-    </>
-  );
-}
-
-function PurchaseInputs({
-  saveForm,
-  onSaveFormChange,
-}: {
-  saveForm: SaveFormState;
-  onSaveFormChange: Dispatch<SetStateAction<SaveFormState>>;
-}) {
-  return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <input
-        value={saveForm.purchasePrice}
-        onChange={(event) => onSaveFormChange((current) => ({ ...current, purchasePrice: event.target.value }))}
-        placeholder="Purchase price"
-        inputMode="decimal"
-        className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-      />
-      <input
-        value={saveForm.purchaseDate}
-        onChange={(event) => onSaveFormChange((current) => ({ ...current, purchaseDate: event.target.value }))}
-        type="date"
-        className="h-11 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
-      />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              value={certInput}
+              onChange={(event) => onCertChange(event.target.value)}
+              inputMode="numeric"
+              placeholder="PSA cert number"
+              className="h-11 flex-1 rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-brand-300"
+            />
+            <button
+              type="button"
+              onClick={onLookup}
+              disabled={lookupLoading}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-70"
+            >
+              {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Fetch from PSA
+            </button>
+          </div>
+          {lookupError ? <p className="text-sm text-rose-600">{lookupError}</p> : null}
+        </>
+      ) : null}
     </div>
   );
 }

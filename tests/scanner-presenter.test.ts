@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  buildScanDetailRows,
-  getCertCorrectionMessage,
-  getScanHeadline,
-  getScanStatus,
-} from '../src/lib/scanner-presenter';
+import { getVerifiedSubtitle, getVerifiedTitle, needsCertConfirmation } from '../src/lib/scanner-presenter';
+import { inferConfidence as inferOcrConfidence } from '../src/lib/scanner-ocr';
 import type { ScannerResult } from '../src/lib/scanner';
 
 const verifiedScan: ScannerResult = {
@@ -19,44 +15,37 @@ const verifiedScan: ScannerResult = {
   gradingCompany: 'PSA',
   itemStatus: 'Y',
   cardId: 'card-1',
-  cardPlayer: 'Shohei Ohtani',
-  cardYear: 2018,
-  cardManufacturer: 'Topps',
-  cardSport: 'Baseball',
-  cardSet: null,
-  cardParallel: 'Refractor',
-  cardNumber: '700',
-  officialGrade: 10,
-  gradeDescription: 'Gem Mint',
+  cardPlayer: 'CHRISTIAN PULISIC',
+  cardYear: 2016,
+  cardManufacturer: 'PANINI SELECT EMERGING STAR SIGNATURES',
+  cardSport: 'SOCCER CARDS',
+  cardSet: 'PANINI SELECT EMERGING STAR SIGNATURES',
+  cardParallel: 'EMERGING STAR SIGNATURE',
+  cardNumber: 'ES-CP',
+  officialGrade: 9,
+  gradeDescription: 'MINT 9',
   qualifierCode: null,
   autographGrade: null,
   isDualCert: false,
-  popAtGrade: 120,
-  popWithQualifier: 4,
-  popHigher: 300,
+  popAtGrade: 32,
+  popWithQualifier: 0,
+  popHigher: 4,
 };
 
-test('getScanStatus returns verified for PSA matches', () => {
-  assert.equal(getScanStatus(verifiedScan), 'verified');
+test('getVerifiedTitle formats player and year', () => {
+  assert.equal(getVerifiedTitle(verifiedScan), '2016 Christian Pulisic');
 });
 
-test('getScanHeadline formats verified card title', () => {
-  assert.equal(getScanHeadline(verifiedScan), '2018 Shohei Ohtani');
+test('getVerifiedSubtitle includes set and card number', () => {
+  assert.match(getVerifiedSubtitle(verifiedScan) ?? '', /ES-CP/);
 });
 
-test('getCertCorrectionMessage explains OCR corrections', () => {
-  assert.equal(
-    getCertCorrectionMessage({
-      ...verifiedScan,
-      certCorrectedFrom: '11336436',
-      certNumber: '113364366',
-    }),
-    'Label OCR read 11336436, but PSA verified cert 113364366.'
-  );
+test('needsCertConfirmation is true until PSA verifies', () => {
+  assert.equal(needsCertConfirmation(verifiedScan), false);
+  assert.equal(needsCertConfirmation({ ...verifiedScan, certLookupSuccess: false }), true);
 });
 
-test('buildScanDetailRows includes cert and grade fields', () => {
-  const rows = buildScanDetailRows(verifiedScan);
-  assert.ok(rows.some((row) => row.label === 'Cert number' && row.value === '113364366'));
-  assert.ok(rows.some((row) => row.label === 'Grade' && row.value.includes('PSA')));
+test('inferConfidence marks 9-digit PSA reads as high', () => {
+  assert.equal(inferOcrConfidence('113364366', 'PSA'), 'high');
+  assert.equal(inferOcrConfidence('11336436', 'PSA'), 'medium');
 });

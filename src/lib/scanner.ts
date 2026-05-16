@@ -27,8 +27,6 @@ export type ScannerResult = {
   popAtGrade: number | null;
   popWithQualifier: number | null;
   popHigher: number | null;
-  psaSpecId?: string | null;
-  certCorrectedFrom?: string | null;
   error?: string;
 };
 

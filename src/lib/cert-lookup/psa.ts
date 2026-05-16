@@ -1,11 +1,6 @@
-import { buildTrailingDigitCandidates, normalizeCertNumber } from '@/lib/cert-number';
+import { normalizeCertNumber } from '@/lib/cert-number';
 
 type PsaRawCert = Record<string, unknown>;
-
-export type PSALookupOutcome = {
-  result: PSALookupResult | null;
-  correctedFrom: string | null;
-};
 
 export type PSALookupResult = {
   certNumber: string;
@@ -193,42 +188,16 @@ export function normalizePSACertBody(certNumber: string, body: unknown): PSALook
 }
 
 export async function lookupPSACert(certNumber: string): Promise<PSALookupResult | null> {
-  const outcome = await lookupPSACertWithRecovery(certNumber);
-  return outcome.result;
-}
-
-export async function lookupPSACertWithRecovery(certNumber: string): Promise<PSALookupOutcome> {
+  const token = getToken();
   const normalized = normalizeCertNumber(certNumber);
 
-  if (!normalized) {
-    return { result: null, correctedFrom: null };
-  }
-
-  const direct = await fetchPSACert(normalized);
-  if (direct) {
-    return { result: direct, correctedFrom: null };
-  }
-
-  for (const candidate of buildTrailingDigitCandidates(normalized)) {
-    const recovered = await fetchPSACert(candidate);
-    if (recovered) {
-      return { result: recovered, correctedFrom: normalized };
-    }
-  }
-
-  return { result: null, correctedFrom: null };
-}
-
-async function fetchPSACert(certNumber: string): Promise<PSALookupResult | null> {
-  const token = getToken();
-
-  if (!token) {
+  if (!token || !normalized) {
     return null;
   }
 
   try {
     const response = await fetch(
-      `https://api.psacard.com/publicapi/cert/GetByCertNumber/${encodeURIComponent(certNumber)}`,
+      `https://api.psacard.com/publicapi/cert/GetByCertNumber/${encodeURIComponent(normalized)}`,
       {
         method: 'GET',
         headers: {
@@ -240,23 +209,23 @@ async function fetchPSACert(certNumber: string): Promise<PSALookupResult | null>
 
     if (!response.ok) {
       console.error('PSA cert lookup failed', {
-        certNumber,
+        certNumber: normalized,
         status: response.status,
       });
       return null;
     }
 
     const body = (await response.json()) as unknown;
-    const normalized = normalizePSACertBody(certNumber, body);
+    const result = normalizePSACertBody(normalized, body);
 
-    if (!normalized) {
+    if (!result) {
       return null;
     }
 
-    return normalized;
+    return result;
   } catch (error) {
     console.error('PSA cert lookup error', {
-      certNumber,
+      certNumber: normalized,
       error: error instanceof Error ? error.message : String(error),
     });
     return null;

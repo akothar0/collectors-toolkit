@@ -27,19 +27,66 @@ export function normalizeGradingCompany(value: unknown): OcrGradingCompany {
   return 'UNKNOWN';
 }
 
+export function extractCertDigits(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return normalizeCertNumber(String(Math.trunc(value)));
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return normalizeCertNumber(value);
+  }
+
+  return null;
+}
+
+/** High = auto PSA lookup. Medium/low = show prefilled cert and ask user to confirm. */
 export function inferConfidence(certNumber: string | null, gradingCompany: OcrGradingCompany | null): OcrConfidence {
-  if (certNumber && gradingCompany && gradingCompany !== 'UNKNOWN') {
+  const digits = certNumber ?? '';
+  const hasCompany = Boolean(gradingCompany && gradingCompany !== 'UNKNOWN');
+
+  if (digits.length >= 9 && hasCompany && gradingCompany === 'PSA') {
     return 'high';
   }
 
-  if (certNumber || (gradingCompany && gradingCompany !== 'UNKNOWN')) {
+  if (digits.length >= 7 && hasCompany && gradingCompany === 'PSA') {
+    return 'medium';
+  }
+
+  if (digits.length >= 4 || hasCompany) {
     return 'medium';
   }
 
   return 'low';
 }
 
+function readFromParsedObject(parsed: unknown): ScannerOcrResponse | null {
+  if (!parsed || typeof parsed !== 'object') {
+    return null;
+  }
+
+  const record = parsed as Record<string, unknown>;
+  return {
+    certNumber: extractCertDigits(record.certNumber),
+    gradingCompany: normalizeGradingCompany(record.gradingCompany),
+  };
+}
+
 function collectStructuredText(response: OpenAIResponseLike) {
+  for (const output of response.output ?? []) {
+    if (output.type !== 'message') {
+      continue;
+    }
+
+    for (const content of output.content ?? []) {
+      if (content.parsed) {
+        const fromParsed = readFromParsedObject(content.parsed);
+        if (fromParsed) {
+          return JSON.stringify(fromParsed);
+        }
+      }
+    }
+  }
+
   const directText = response.output_text?.trim();
   if (directText) {
     return directText;
@@ -52,16 +99,8 @@ function collectStructuredText(response: OpenAIResponseLike) {
     }
 
     for (const content of output.content ?? []) {
-      if (content.type !== 'output_text') {
+      if (content.type !== 'output_text' && content.type !== 'text') {
         continue;
-      }
-
-      if (content.parsed && typeof content.parsed === 'object') {
-        try {
-          return JSON.stringify(content.parsed);
-        } catch {
-          // Fall through to plain text handling.
-        }
       }
 
       if (typeof content.text === 'string' && content.text.trim()) {
@@ -70,8 +109,7 @@ function collectStructuredText(response: OpenAIResponseLike) {
     }
   }
 
-  const joined = parts.join('').trim();
-  return joined || null;
+  return parts.join('').trim() || null;
 }
 
 export function parseScannerOcrResponse(response: unknown): ScannerOcrResponse | null {
@@ -79,18 +117,32 @@ export function parseScannerOcrResponse(response: unknown): ScannerOcrResponse |
     return null;
   }
 
-  const text = collectStructuredText(response as OpenAIResponseLike);
+  const payload = response as OpenAIResponseLike;
+
+  for (const output of payload.output ?? []) {
+    if (output.type !== 'message') {
+      continue;
+    }
+
+    for (const content of output.content ?? []) {
+      if (content.parsed) {
+        const fromParsed = readFromParsedObject(content.parsed);
+        if (fromParsed) {
+          return fromParsed;
+        }
+      }
+    }
+  }
+
+  const text = collectStructuredText(payload);
   if (!text) {
     return null;
   }
 
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    const rawCert =
-      typeof parsed.certNumber === 'string' && parsed.certNumber.trim() ? parsed.certNumber.trim() : null;
-
     return {
-      certNumber: normalizeCertNumber(rawCert),
+      certNumber: extractCertDigits(parsed.certNumber),
       gradingCompany: normalizeGradingCompany(parsed.gradingCompany),
     };
   } catch (error) {
@@ -101,4 +153,3 @@ export function parseScannerOcrResponse(response: unknown): ScannerOcrResponse |
     return null;
   }
 }
-
