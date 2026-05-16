@@ -34,11 +34,10 @@ Return a JSON array. Skip shipping, taxes, buyer's premium, order totals, and an
 If price is missing, use null.`;
 
 export async function parseFanaticsPDF(pdfBuffer: Buffer): Promise<ParsedImportItem[]> {
-  // Dynamically import pdf-parse (handles CJS/ESM interop)
-  const pdfParseModule = await import('pdf-parse');
-  const pdfFn = (pdfParseModule as unknown as { default?: unknown }).default ?? pdfParseModule;
-  const pdfData = await (pdfFn as (buf: Buffer) => Promise<{ text: string }>)(pdfBuffer);
-  const text = pdfData.text;
+  // unpdf works in Node.js/serverless without browser DOM globals (unlike pdf-parse)
+  const { getDocumentProxy, extractText } = await import('unpdf');
+  const doc = await getDocumentProxy(new Uint8Array(pdfBuffer));
+  const { text } = await extractText(doc, { mergePages: true });
 
   if (!text || text.trim().length < 10) {
     return [];
