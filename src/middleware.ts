@@ -1,11 +1,18 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 const clerkReady = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim());
+const isProtectedPage = createRouteMatcher([
+  '/scanner(.*)',
+  '/grader(.*)',
+  '/collection(.*)',
+  '/portfolio(.*)',
+  '/import(.*)',
+]);
 
 export default clerkReady
   ? clerkMiddleware(async (auth, req) => {
-      if (req.nextUrl.pathname !== '/') {
+      if (isProtectedPage(req)) {
         await auth.protect();
       }
     })
@@ -19,4 +26,3 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 };
-

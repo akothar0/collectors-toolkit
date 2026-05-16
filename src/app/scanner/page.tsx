@@ -4,6 +4,7 @@ import { ChevronDown, Loader2, ScanLine, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { ScanResult } from '@/components/ScanResult';
+import { readJsonResponse } from '@/lib/http-json';
 import type { ScannerResult } from '@/lib/scanner';
 
 const loadingSteps = ['Reading slab label...', 'Looking up cert...', 'Fetching card details...'];
@@ -94,7 +95,7 @@ export default function ScannerPage() {
         body: formData,
       });
 
-      const data = (await response.json()) as ScannerResult & { remainingScans?: number };
+      const data = await readJsonResponse<ScannerResult & { remainingScans?: number }>(response);
       if (!response.ok) {
         throw new Error(data.error ?? 'Unable to scan this slab right now.');
       }

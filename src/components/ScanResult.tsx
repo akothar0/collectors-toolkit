@@ -3,6 +3,7 @@
 
 import { Loader2, RotateCcw, Save, Search } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { readJsonResponse } from '@/lib/http-json';
 import type { ScannerResult } from '@/lib/scanner';
 
 type ScanResultProps = {
@@ -158,7 +159,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         body: formData,
       });
 
-      const nextResult = (await response.json()) as ScannerResult;
+      const nextResult = await readJsonResponse<ScannerResult>(response);
       if (!response.ok) {
         throw new Error(nextResult.error ?? 'Lookup failed');
       }
@@ -216,7 +217,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         body: JSON.stringify(payload),
       });
 
-      const json = (await response.json()) as { error?: string; collectionCardId?: string };
+      const json = await readJsonResponse<{ error?: string; collectionCardId?: string }>(response);
       if (!response.ok) {
         throw new Error(json.error ?? 'Unable to save collection entry');
       }
