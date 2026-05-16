@@ -81,7 +81,8 @@ export async function POST(req: Request) {
       }
 
       type BookmarkletRow = { title?: unknown; price?: unknown; date?: unknown };
-      const rows = JSON.parse(raw) as BookmarkletRow[];
+      // raw is base64-encoded JSON from the bookmarklet — decode before parsing
+      const rows = JSON.parse(Buffer.from(raw, 'base64').toString('utf-8')) as BookmarkletRow[];
       parsed = rows
         .map((r) => ({
           rawTitle: typeof r.title === 'string' ? r.title.trim() : '',

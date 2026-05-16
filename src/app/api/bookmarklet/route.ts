@@ -4,8 +4,11 @@ export const runtime = 'nodejs';
 
 // Serves the eBay bookmarklet JS with the correct app URL injected.
 // User drags the bookmarklet link to their bookmarks bar, then clicks it on the eBay purchases page.
-export function GET() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+export function GET(req: Request) {
+  const reqUrl = new URL(req.url);
+  const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
+  // Strip trailing slash so we never produce //import
+  const appUrl = rawAppUrl.replace(/\/$/, '');
 
   // eBay item titles are plain <a> tags linking to /itm/ — no reliable class names.
   // Strategy: find all item links, then walk up the DOM to extract price + date from
@@ -47,7 +50,7 @@ export function GET() {
     return;
   }
   var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(items))));
-  window.location.href='${appUrl}/import?bd='+encoded;
+  window.location.href='${appUrl}/import?bd='+encodeURIComponent(encoded);
 })();`;
 
   return new NextResponse(source, {
