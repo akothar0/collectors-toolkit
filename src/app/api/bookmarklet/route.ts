@@ -53,7 +53,7 @@ export function GET() {
   return new NextResponse(source, {
     headers: {
       'Content-Type': 'application/javascript',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-store',
     },
   });
 }

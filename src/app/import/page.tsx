@@ -23,6 +23,8 @@ function ImportPageInner() {
   const [pasteText, setPasteText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [bookmarkletCode, setBookmarkletCode] = useState('');
+  const [copied, setCopied] = useState(false);
   const bookmarkletRef = useRef<HTMLAnchorElement>(null);
 
   // Auto-handle bookmarklet redirect with ?bd= param
@@ -35,18 +37,27 @@ function ImportPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load bookmarklet href from API
+  // Load bookmarklet code from API (no-store so always fresh)
   useEffect(() => {
     if (activeTab !== 'ebay_bookmarklet') return;
-    fetch('/api/bookmarklet')
+    fetch('/api/bookmarklet', { cache: 'no-store' })
       .then((r) => r.text())
       .then((code) => {
+        const full = `javascript:${code}`;
+        setBookmarkletCode(full);
         if (bookmarkletRef.current) {
-          bookmarkletRef.current.href = `javascript:${code}`;
+          bookmarkletRef.current.href = full;
         }
       })
       .catch(() => {});
   }, [activeTab]);
+
+  async function copyBookmarklet() {
+    if (!bookmarkletCode) return;
+    await navigator.clipboard.writeText(bookmarkletCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
 
   async function handleBookmarkletData(encoded: string) {
     setLoading(true);
@@ -150,30 +161,40 @@ function ImportPageInner() {
 
           {/* eBay Bookmarklet */}
           {activeTab === 'ebay_bookmarklet' && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {loading && bd ? (
                 <div className="text-sm text-slate-500">Processing your eBay purchases…</div>
               ) : (
                 <>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-                    <p className="font-medium text-slate-800">One-time setup</p>
-                    <p className="mt-1">Drag this button to your browser&apos;s bookmarks bar. Then go to your eBay purchases page and click the bookmark.</p>
-                    <div className="mt-4">
-                      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-                      <a
-                        ref={bookmarkletRef}
-                        href="#"
-                        onClick={(e) => e.preventDefault()}
-                        draggable
-                        className="inline-flex cursor-grab items-center gap-2 rounded-xl border-2 border-dashed border-brand-400 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 select-none active:cursor-grabbing"
-                      >
-                        ⚡ Import from eBay
-                      </a>
-                      <p className="mt-2 text-xs text-slate-400">Drag the button above to your bookmarks bar</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-500">
-                    After clicking the bookmark on eBay, you&apos;ll be redirected back here automatically with your purchases ready to review.
+                  <ol className="space-y-2 text-sm text-slate-600">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>
+                      Click <strong>Copy Bookmarklet</strong> below
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>
+                      Right-click your bookmarks bar → <strong>Add page…</strong> (or bookmark manager → New bookmark)
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>
+                      Set Name: <strong>Import from eBay</strong>, then paste the copied code into the <strong>URL</strong> field
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">4</span>
+                      Go to <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">ebay.com/mye/myebay/purchase</a> and click the bookmark
+                    </li>
+                  </ol>
+
+                  <button
+                    onClick={copyBookmarklet}
+                    disabled={!bookmarkletCode}
+                    className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
+                  >
+                    {copied ? '✓ Copied!' : bookmarkletCode ? 'Copy Bookmarklet' : 'Loading…'}
+                  </button>
+
+                  <p className="text-xs text-slate-400">
+                    After clicking the bookmark on eBay, you&apos;ll be redirected here automatically.
                   </p>
                 </>
               )}
