@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Loader2, ScanLine, Upload } from 'lucide-react';
+import { Check, ChevronDown, Loader2, ScanLine, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { ScanResult } from '@/components/ScanResult';
@@ -47,15 +47,17 @@ export default function ScannerPage() {
 
   useEffect(() => {
     if (!isScanning) {
-      setLoadingStep(0);
       return;
     }
 
-    const interval = window.setInterval(() => {
-      setLoadingStep((current) => (current + 1) % loadingSteps.length);
-    }, 1100);
+    setLoadingStep(0);
+    const advanceToLookup = window.setTimeout(() => setLoadingStep(1), 2000);
+    const advanceToDetails = window.setTimeout(() => setLoadingStep(2), 4500);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(advanceToLookup);
+      window.clearTimeout(advanceToDetails);
+    };
   }, [isScanning]);
 
   const remainingLabel = useMemo(() => {
@@ -72,6 +74,7 @@ export default function ScannerPage() {
     setScanResult(null);
     setScanError('');
     setIsScanning(false);
+    setLoadingStep(0);
     setUploadKey((current) => current + 1);
   }
 
@@ -109,6 +112,7 @@ export default function ScannerPage() {
     } catch (error) {
       setScanError(error instanceof Error ? error.message : 'Unable to scan this slab right now.');
     } finally {
+      setLoadingStep(loadingSteps.length);
       setIsScanning(false);
     }
   }
@@ -180,7 +184,7 @@ export default function ScannerPage() {
                 <div className="space-y-3">
                   {loadingSteps.map((step, index) => {
                     const active = isScanning && loadingStep === index;
-                    const complete = isScanning && index < loadingStep;
+                    const complete = index < loadingStep;
 
                     return (
                       <div
@@ -189,13 +193,17 @@ export default function ScannerPage() {
                           active
                             ? 'border-brand-300 bg-white/12 text-white'
                             : complete
-                              ? 'border-white/10 bg-white/8 text-slate-300'
+                              ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
                               : 'border-white/10 bg-white/5 text-slate-400'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${active ? 'bg-brand-500 text-white' : 'bg-white/10 text-slate-300'}`}>
-                            {index + 1}
+                          <span
+                            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                              complete ? 'bg-emerald-500 text-white' : active ? 'bg-brand-500 text-white' : 'bg-white/10 text-slate-300'
+                            }`}
+                          >
+                            {complete ? <Check className="h-4 w-4" /> : index + 1}
                           </span>
                           <span className="text-sm font-medium">{step}</span>
                           {active ? <Loader2 className="ml-auto h-4 w-4 animate-spin text-brand-200" /> : null}

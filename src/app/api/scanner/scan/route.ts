@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { findOrCreateCard } from '@/lib/card-catalog';
-import { lookupPSACert } from '@/lib/cert-lookup/psa';
+import { lookupPSACertWithRecovery } from '@/lib/cert-lookup/psa';
+import { normalizeCertNumber } from '@/lib/cert-number';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
 import { SCAN_LIMIT } from '@/lib/scanner-limit';
@@ -88,7 +89,7 @@ async function callSlabOcr(imageUrl: string) {
   }
 
   const prompt =
-    'This is a photo of a graded sports card in a protective case (slab). Look at the label on the slab and extract: (1) the certification number (cert number) — usually a 7-9 digit number, (2) the grading company — one of PSA, BGS, SGC, or CGC. Return ONLY a JSON object: { certNumber: string | null, gradingCompany: \'PSA\' | \'BGS\' | \'SGC\' | \'CGC\' | \'UNKNOWN\' } If you cannot read the cert number clearly, return certNumber as null.';
+    'This is a photo of a graded sports card in a protective case (slab). Read the label carefully and extract: (1) the full certification number — copy every digit exactly, with no spaces or punctuation. PSA cert numbers are usually 8 or 9 digits; do not drop trailing digits. (2) the grading company — one of PSA, BGS, SGC, or CGC. Return ONLY a JSON object: { certNumber: string | null, gradingCompany: \'PSA\' | \'BGS\' | \'SGC\' | \'CGC\' | \'UNKNOWN\' } If you cannot read the cert number clearly, return certNumber as null.';
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -258,7 +259,9 @@ async function handleScanRequest(req: Request) {
   const manualCertNumber = formData.get('manualCertNumber');
   const imageUrlFromClient = formData.get('imageUrl');
 
-  const manualCert = typeof manualCertNumber === 'string' ? manualCertNumber.trim() : '';
+  const manualCert = normalizeCertNumber(
+    typeof manualCertNumber === 'string' ? manualCertNumber.trim() : ''
+  ) ?? '';
   const fallbackImageUrl = typeof imageUrlFromClient === 'string' && imageUrlFromClient.trim() ? imageUrlFromClient.trim() : '';
 
   let uploadedImageUrl = fallbackImageUrl || '';
@@ -357,20 +360,21 @@ async function handleScanRequest(req: Request) {
   const lookupAllowed = lookupCertNumber && (manualCert || ocrGradingCompany === 'PSA');
 
   if (lookupAllowed) {
-    const psaResult = await lookupPSACert(lookupCertNumber);
+    const { result: psaResult, correctedFrom } = await lookupPSACertWithRecovery(lookupCertNumber);
 
     if (psaResult) {
       finalResult = {
         ...finalResult,
         certLookupSuccess: true,
         certNumber: psaResult.certNumber,
+        certCorrectedFrom: correctedFrom,
         gradingCompany: 'PSA',
         itemStatus: 'Y',
         cardPlayer: psaResult.player,
         cardYear: psaResult.year,
         cardManufacturer: psaResult.manufacturer,
         cardSport: psaResult.sport,
-        cardSet: null,
+        cardSet: psaResult.manufacturer,
         cardParallel: psaResult.parallel,
         cardNumber: psaResult.cardNumber,
         officialGrade: psaResult.grade,
@@ -381,6 +385,8 @@ async function handleScanRequest(req: Request) {
         popAtGrade: psaResult.popAtGrade,
         popWithQualifier: psaResult.popWithQualifier,
         popHigher: psaResult.popHigher,
+        psaSpecId: psaResult.psaSpecId,
+        error: undefined,
       };
 
       try {

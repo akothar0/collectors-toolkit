@@ -13,6 +13,17 @@ test('parseScannerOcrResponse reads output_text JSON', () => {
   });
 });
 
+test('parseScannerOcrResponse normalizes cert numbers to digits only', () => {
+  const result = parseScannerOcrResponse({
+    output_text: '{"certNumber":"#11336436","gradingCompany":"PSA"}',
+  });
+
+  assert.deepEqual(result, {
+    certNumber: '11336436',
+    gradingCompany: 'PSA',
+  });
+});
+
 test('parseScannerOcrResponse reads JSON from output content when output_text is empty', () => {
   const result = parseScannerOcrResponse({
     output_text: '',

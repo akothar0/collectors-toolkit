@@ -1,3 +1,4 @@
+import { normalizeCertNumber } from '@/lib/cert-number';
 import type { OcrConfidence, OcrGradingCompany } from '@/lib/scanner';
 
 export type ScannerOcrResponse = {
@@ -85,9 +86,11 @@ export function parseScannerOcrResponse(response: unknown): ScannerOcrResponse |
 
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
+    const rawCert =
+      typeof parsed.certNumber === 'string' && parsed.certNumber.trim() ? parsed.certNumber.trim() : null;
+
     return {
-      certNumber:
-        typeof parsed.certNumber === 'string' && parsed.certNumber.trim() ? parsed.certNumber.trim() : null,
+      certNumber: normalizeCertNumber(rawCert),
       gradingCompany: normalizeGradingCompany(parsed.gradingCompany),
     };
   } catch (error) {

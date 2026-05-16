@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildScanDetailRows, getScanHeadline, getScanStatus } from '../src/lib/scanner-presenter';
+import {
+  buildScanDetailRows,
+  getCertCorrectionMessage,
+  getScanHeadline,
+  getScanStatus,
+} from '../src/lib/scanner-presenter';
 import type { ScannerResult } from '../src/lib/scanner';
 
 const verifiedScan: ScannerResult = {
@@ -36,7 +41,18 @@ test('getScanStatus returns verified for PSA matches', () => {
 });
 
 test('getScanHeadline formats verified card title', () => {
-  assert.equal(getScanHeadline(verifiedScan), '2018 Topps Shohei Ohtani');
+  assert.equal(getScanHeadline(verifiedScan), '2018 Shohei Ohtani');
+});
+
+test('getCertCorrectionMessage explains OCR corrections', () => {
+  assert.equal(
+    getCertCorrectionMessage({
+      ...verifiedScan,
+      certCorrectedFrom: '11336436',
+      certNumber: '113364366',
+    }),
+    'Label OCR read 11336436, but PSA verified cert 113364366.'
+  );
 });
 
 test('buildScanDetailRows includes cert and grade fields', () => {

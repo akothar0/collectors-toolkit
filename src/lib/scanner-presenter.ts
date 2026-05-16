@@ -1,6 +1,29 @@
+import { getPSACertUrl } from '@/lib/cert-number';
 import type { OcrConfidence, ScannerResult } from '@/lib/scanner';
 
 export type ScanStatus = 'verified' | 'partial' | 'needs_input';
+
+export type ScanDetailRow = {
+  label: string;
+  value: string;
+  href?: string | null;
+};
+
+export function formatCatalogText(value: string | null | undefined) {
+  if (!value?.trim()) {
+    return '—';
+  }
+
+  const trimmed = value.trim();
+  const letters = trimmed.replace(/[^A-Za-z]/g, '');
+  if (letters.length > 0 && letters === letters.toUpperCase()) {
+    return trimmed
+      .toLowerCase()
+      .replace(/\b[a-z]/g, (char) => char.toUpperCase());
+  }
+
+  return trimmed;
+}
 
 export function getScanStatus(scan: ScannerResult): ScanStatus {
   if (scan.certLookupSuccess) {
@@ -17,18 +40,27 @@ export function getScanStatus(scan: ScannerResult): ScanStatus {
 export function getScanHeadline(scan: ScannerResult) {
   if (scan.certLookupSuccess && scan.cardPlayer) {
     const year = scan.cardYear ? `${scan.cardYear} ` : '';
-    const manufacturer = scan.cardManufacturer ? `${scan.cardManufacturer} ` : '';
-    return `${year}${manufacturer}${scan.cardPlayer}`.trim();
+    return `${year}${formatCatalogText(scan.cardPlayer)}`.trim();
   }
 
-  if (scan.ocrCertNumber) {
-    return `Cert ${scan.ocrCertNumber} detected`;
+  if (scan.ocrCertNumber || scan.certNumber) {
+    return `Cert ${scan.certNumber ?? scan.ocrCertNumber}`;
   }
 
   return 'Slab scan ready for review';
 }
 
 export function getScanSubheadline(scan: ScannerResult) {
+  if (scan.certLookupSuccess) {
+    const pieces = [
+      formatCatalogText(scan.cardManufacturer),
+      scan.cardNumber,
+      formatCatalogText(scan.cardParallel),
+    ].filter((value) => value !== '—');
+
+    return pieces.length > 0 ? pieces.join(' · ') : formatCatalogText(scan.cardSport);
+  }
+
   const pieces = [scan.cardParallel, scan.cardNumber, scan.cardSport].filter(
     (value) => typeof value === 'string' && value.trim().length > 0
   );
@@ -65,27 +97,37 @@ export function confidenceLabel(confidence: OcrConfidence) {
   return 'Low confidence';
 }
 
-export type ScanDetailRow = {
-  label: string;
-  value: string;
-};
-
 export function buildScanDetailRows(scan: ScannerResult): ScanDetailRow[] {
+  const cert = scan.certNumber ?? scan.ocrCertNumber;
+  const certUrl = getPSACertUrl(cert);
+
   const rows: ScanDetailRow[] = [
-    { label: 'Cert number', value: scan.certNumber ?? scan.ocrCertNumber ?? '—' },
+    {
+      label: 'Cert number',
+      value: cert ?? '—',
+      href: certUrl,
+    },
     {
       label: 'Grading company',
       value: scan.gradingCompany ?? scan.ocrGradingCompany ?? '—',
     },
     { label: 'Grade', value: formatGradeLabel(scan.officialGrade, scan.gradingCompany, scan.qualifierCode) },
-    { label: 'Grade label', value: scan.gradeDescription ?? '—' },
-    { label: 'Player', value: scan.cardPlayer ?? '—' },
+    { label: 'Grade label', value: formatCatalogText(scan.gradeDescription) },
+    { label: 'Player', value: formatCatalogText(scan.cardPlayer) },
     { label: 'Year', value: scan.cardYear?.toString() ?? '—' },
-    { label: 'Set / brand', value: scan.cardManufacturer ?? scan.cardSet ?? '—' },
+    { label: 'Set / brand', value: formatCatalogText(scan.cardManufacturer ?? scan.cardSet) },
     { label: 'Card #', value: scan.cardNumber ?? '—' },
-    { label: 'Parallel', value: scan.cardParallel ?? '—' },
-    { label: 'Sport', value: scan.cardSport ?? '—' },
+    { label: 'Parallel / variety', value: formatCatalogText(scan.cardParallel) },
+    { label: 'Sport', value: formatCatalogText(scan.cardSport) },
   ];
+
+  if (scan.psaSpecId) {
+    rows.push({ label: 'PSA Spec ID', value: scan.psaSpecId });
+  }
+
+  if (scan.isDualCert) {
+    rows.push({ label: 'Dual cert', value: 'Yes' });
+  }
 
   if (scan.autographGrade !== null) {
     rows.push({
@@ -103,8 +145,16 @@ export function buildPopulationRows(scan: ScannerResult): ScanDetailRow[] {
   }
 
   return [
-    { label: 'Pop at grade', value: scan.popAtGrade?.toLocaleString() ?? '—' },
+    { label: 'Pop at this grade', value: scan.popAtGrade?.toLocaleString() ?? '—' },
     { label: 'Pop higher', value: scan.popHigher?.toLocaleString() ?? '—' },
     { label: 'Pop w/ qualifier', value: scan.popWithQualifier?.toLocaleString() ?? '—' },
   ];
+}
+
+export function getCertCorrectionMessage(scan: ScannerResult) {
+  if (!scan.certCorrectedFrom || !scan.certNumber) {
+    return null;
+  }
+
+  return `Label OCR read ${scan.certCorrectedFrom}, but PSA verified cert ${scan.certNumber}.`;
 }

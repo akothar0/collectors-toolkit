@@ -5,11 +5,14 @@ import { Loader2, RotateCcw, Save, Search } from 'lucide-react';
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { readJsonResponse } from '@/lib/http-json';
 import type { ScannerResult } from '@/lib/scanner';
+import { getPSACertUrl } from '@/lib/cert-number';
 import {
   buildPopulationRows,
   buildScanDetailRows,
   confidenceLabel,
+  formatCatalogText,
   formatGradeValue,
+  getCertCorrectionMessage,
   getScanHeadline,
   getScanStatus,
   getScanSubheadline,
@@ -42,7 +45,7 @@ type SaveFormState = {
   notes: string;
 };
 
-type DetailRow = { label: string; value: string };
+type DetailRow = { label: string; value: string; href?: string | null };
 
 function buildSaveForm(scan: ScannerResult): SaveFormState {
   return {
@@ -95,17 +98,25 @@ function DetailGrid({ rows }: { rows: DetailRow[] }) {
   return (
     <dl className="divide-y divide-slate-100">
       {rows.map((row) => (
-        <DetailRowItem key={row.label} label={row.label} value={row.value} />
+        <DetailRowItem key={row.label} label={row.label} value={row.value} href={row.href} />
       ))}
     </dl>
   );
 }
 
-function DetailRowItem({ label, value }: DetailRow) {
+function DetailRowItem({ label, value, href }: DetailRow) {
   return (
     <div className="grid grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)] gap-4 px-1 py-3.5">
       <dt className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{label}</dt>
-      <dd className="text-sm font-medium text-slate-900">{value}</dd>
+      <dd className="text-sm font-medium text-slate-900">
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer" className="text-brand-600 underline-offset-2 hover:underline">
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }
@@ -136,6 +147,11 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
   const subheadline = useMemo(() => getScanSubheadline(result), [result]);
   const detailRows = useMemo(() => buildScanDetailRows(result), [result]);
   const populationRows = useMemo(() => buildPopulationRows(result), [result]);
+  const certCorrection = useMemo(() => getCertCorrectionMessage(result), [result]);
+  const psaCertUrl = useMemo(
+    () => getPSACertUrl(result.certNumber ?? result.ocrCertNumber),
+    [result.certNumber, result.ocrCertNumber]
+  );
   const hasImage = Boolean(result.imageUrl?.trim());
 
   async function runManualLookup() {
@@ -241,7 +257,9 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         </span>
       </div>
 
-      {result.error ? (
+      {certCorrection ? <InfoBanner message={certCorrection} /> : null}
+
+      {result.error && !result.certLookupSuccess ? (
         <ErrorBanner error={result.error} onTryAgain={onTryAgain} />
       ) : null}
 
@@ -277,7 +295,20 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
             </div>
 
             {result.gradeDescription ? (
-              <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">{result.gradeDescription}</p>
+              <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                {formatCatalogText(result.gradeDescription)}
+              </p>
+            ) : null}
+
+            {psaCertUrl ? (
+              <a
+                href={psaCertUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex text-sm font-medium text-brand-600 underline-offset-2 hover:underline"
+              >
+                View on PSA →
+              </a>
             ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -311,7 +342,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         </div>
       </div>
 
-      {!result.certLookupSuccess && !result.ocrCertNumber ? (
+      {!result.certLookupSuccess ? (
         <ManualLookupPanel
           manualCert={manualCert}
           manualError={manualError}
@@ -333,6 +364,14 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate }: ScanResultProps)
         onSaveFormChange={setSaveForm}
       />
     </section>
+  );
+}
+
+function InfoBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-7 text-sky-950">
+      {message}
+    </div>
   );
 }
 
@@ -379,7 +418,9 @@ function ManualLookupPanel({
   return (
     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Manual PSA lookup</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">Enter the cert number if the label was hard to read.</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        PSA lookup did not complete. Confirm the full cert number — PSA certs are usually 8 or 9 digits.
+      </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <input
           value={manualCert}
