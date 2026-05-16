@@ -1,6 +1,21 @@
 export type OcrGradingCompany = 'PSA' | 'BGS' | 'SGC' | 'CGC' | 'UNKNOWN';
 export type OcrConfidence = 'high' | 'medium' | 'low';
 
+export type CertSubGrades = {
+  centering?: number;
+  corners?: number;
+  edges?: number;
+  surface?: number;
+};
+
+export type LookupSource =
+  | 'psa_api'
+  | 'beckett_scrape'
+  | 'sgc_scrape'
+  | 'cardgrade_io'
+  | 'ocr'
+  | 'failed';
+
 export type ScannerResult = {
   scanId: string;
   imageUrl: string;
@@ -10,6 +25,7 @@ export type ScannerResult = {
   certLookupSuccess: boolean;
   certNumber: string | null;
   gradingCompany: string | null;
+  lookupSource?: LookupSource | null;
   itemStatus: string | null;
   cardId: string | null;
   cardPlayer: string | null;
@@ -23,10 +39,13 @@ export type ScannerResult = {
   gradeDescription: string | null;
   qualifierCode: string | null;
   autographGrade: number | null;
+  subGrades?: CertSubGrades | null;
   isDualCert: boolean;
   popAtGrade: number | null;
   popWithQualifier: number | null;
   popHigher: number | null;
+  savedToCollection?: boolean;
+  collectionCardId?: string | null;
   error?: string;
 };
 

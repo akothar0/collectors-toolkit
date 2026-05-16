@@ -1,65 +1,21 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { findOrCreateCard } from '@/lib/card-catalog';
-import { lookupPSACert } from '@/lib/cert-lookup/psa';
+import type { CertLookupResult } from '@/lib/cert-lookup/types';
+import { lookupCertWithStatus, normalizeLookupGradingCompany } from '@/lib/cert-lookup/index';
 import { isPlausibleCertNumber, normalizeCertNumber } from '@/lib/cert-number';
 import { readSlabLabel } from '@/lib/slab-ocr';
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limit';
 import { fileToDataUrl, resolveStoredScanImageUrl } from '@/lib/scanner-image';
 import { SCAN_LIMIT } from '@/lib/scanner-limit';
 import { createServiceClient } from '@/lib/supabase';
-import { inferConfidence } from '@/lib/scanner-ocr';
-import type { OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
+import { inferConfidence, normalizeGradingCompany } from '@/lib/scanner-ocr';
+import type { LookupSource, OcrConfidence, OcrGradingCompany, ScannerResult } from '@/lib/scanner';
 import { isConfigurationError, scannerErrorResponse } from '@/lib/scanner-api';
+import { getOrCreateUserId } from '@/lib/users';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-async function getOrCreateUserId(clerkId: string, email: string | null) {
-  const supabase = createServiceClient();
-
-  const { data: existing, error: readError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('clerk_id', clerkId)
-    .maybeSingle();
-
-  if (existing?.id) {
-    return existing.id as string;
-  }
-
-  if (readError) {
-    console.error('Unable to read user record', {
-      clerkId,
-      error: readError.message,
-    });
-  }
-
-  const { data: inserted, error: insertError } = await supabase
-    .from('users')
-    .insert({
-      clerk_id: clerkId,
-      email,
-    })
-    .select('id')
-    .single();
-
-  if (insertError || !inserted?.id) {
-    const { data: retry } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', clerkId)
-      .maybeSingle();
-
-    if (retry?.id) {
-      return retry.id as string;
-    }
-
-    throw new Error(`Unable to create user record: ${insertError?.message ?? 'unknown error'}`);
-  }
-
-  return inserted.id as string;
-}
 
 async function uploadScanImage(userId: string, imageFile: File) {
   const supabase = createServiceClient();
@@ -87,6 +43,36 @@ type ScanRowPayload = Partial<ScannerResult> & {
   rawCertResponse?: unknown;
 };
 
+function resolveLookupSource(payload: ScanRowPayload): LookupSource {
+  if (payload.certLookupSuccess && payload.lookupSource) {
+    return payload.lookupSource;
+  }
+
+  if (payload.certNumber && payload.error) {
+    return 'failed';
+  }
+
+  return 'ocr';
+}
+
+async function getSavedCollectionForScan(scanId: string) {
+  if (!scanId) {
+    return { savedToCollection: false, collectionCardId: null as string | null };
+  }
+
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('collection_cards')
+    .select('id')
+    .eq('scan_id', scanId)
+    .maybeSingle();
+
+  return {
+    savedToCollection: Boolean(data?.id),
+    collectionCardId: (data?.id as string | undefined) ?? null,
+  };
+}
+
 async function insertScanRow(userId: string, payload: ScanRowPayload) {
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -109,7 +95,7 @@ async function insertScanRow(userId: string, payload: ScanRowPayload) {
       pop_higher: payload.popHigher ?? null,
       is_dual_cert: payload.isDualCert ?? false,
       item_status: payload.itemStatus ?? null,
-      lookup_source: payload.certLookupSuccess ? 'psa_api' : 'ocr',
+      lookup_source: resolveLookupSource(payload),
       raw_cert_response: payload.rawCertResponse ?? (payload.error ? { error: payload.error } : null),
     })
     .select('id')
@@ -143,7 +129,7 @@ async function updateScanRow(scanId: string, payload: ScanRowPayload) {
       pop_higher: payload.popHigher ?? null,
       is_dual_cert: payload.isDualCert ?? false,
       item_status: payload.itemStatus ?? null,
-      lookup_source: payload.certLookupSuccess ? 'psa_api' : 'ocr',
+      lookup_source: resolveLookupSource(payload),
       raw_cert_response: payload.rawCertResponse ?? null,
       pop_captured_at: payload.certLookupSuccess ? new Date().toISOString() : null,
     })
@@ -152,6 +138,70 @@ async function updateScanRow(scanId: string, payload: ScanRowPayload) {
   if (error) {
     throw new Error(`Unable to update scan row: ${error.message}`);
   }
+}
+
+function certLookupRawKey(source: CertLookupResult['source']) {
+  if (source === 'psa_api') {
+    return 'psa';
+  }
+
+  if (source === 'beckett_scrape') {
+    return 'bgs';
+  }
+
+  if (source === 'sgc_scrape') {
+    return 'sgc';
+  }
+
+  return 'cardgrade';
+}
+
+function applyCertLookup(
+  base: ScannerResult,
+  lookup: CertLookupResult
+): { result: ScannerResult; rawCertResponse: Record<string, unknown> } {
+  const company =
+    lookup.source === 'psa_api'
+      ? 'PSA'
+      : lookup.source === 'beckett_scrape'
+        ? 'BGS'
+        : lookup.source === 'sgc_scrape'
+          ? 'SGC'
+          : normalizeLookupGradingCompany(base.gradingCompany ?? 'PSA');
+
+  const result: ScannerResult = {
+    ...base,
+    certLookupSuccess: true,
+    ocrConfidence: 'high',
+    certNumber: lookup.certNumber,
+    gradingCompany: company,
+    lookupSource: lookup.source,
+    itemStatus: lookup.source === 'psa_api' ? 'Y' : null,
+    cardPlayer: lookup.player,
+    cardYear: lookup.year,
+    cardManufacturer: lookup.manufacturer ?? lookup.setName,
+    cardSport: lookup.sport ?? null,
+    cardSet: lookup.setName ?? lookup.manufacturer ?? null,
+    cardParallel: lookup.parallel,
+    cardNumber: lookup.cardNumber,
+    officialGrade: lookup.grade,
+    gradeDescription: lookup.gradeDescription,
+    qualifierCode: lookup.qualifierCode ?? null,
+    autographGrade: lookup.autographGrade ?? null,
+    subGrades: lookup.subGrades ?? null,
+    isDualCert: lookup.isDualCert ?? false,
+    popAtGrade: lookup.popAtGrade ?? null,
+    popWithQualifier: lookup.popWithQualifier ?? null,
+    popHigher: lookup.popHigher ?? null,
+    error: undefined,
+  };
+
+  const rawCertResponse: Record<string, unknown> = {
+    lookup,
+    [certLookupRawKey(lookup.source)]: lookup,
+  };
+
+  return { result, rawCertResponse };
 }
 
 export async function POST(req: Request) {
@@ -198,11 +248,16 @@ async function handleScanRequest(req: Request) {
   const formData = await req.formData();
   const imageField = formData.get('image');
   const manualCertNumber = formData.get('manualCertNumber');
+  const manualGradingCompanyField = formData.get('manualGradingCompany');
   const imageUrlFromClient = formData.get('imageUrl');
 
   const manualCert = normalizeCertNumber(
     typeof manualCertNumber === 'string' ? manualCertNumber.trim() : ''
   ) ?? '';
+  const manualGradingCompany =
+    typeof manualGradingCompanyField === 'string' && manualGradingCompanyField.trim()
+      ? normalizeGradingCompany(manualGradingCompanyField)
+      : null;
   const fallbackImageUrl = typeof imageUrlFromClient === 'string' && imageUrlFromClient.trim() ? imageUrlFromClient.trim() : '';
 
   let uploadedImageUrl = fallbackImageUrl || '';
@@ -247,6 +302,15 @@ async function handleScanRequest(req: Request) {
     return NextResponse.json({ error: 'Please upload a slab photo or enter a cert number.' }, { status: 400 });
   }
 
+  const resolvedGradingCompany =
+    manualGradingCompany && manualGradingCompany !== 'UNKNOWN'
+      ? manualGradingCompany
+      : ocrGradingCompany && ocrGradingCompany !== 'UNKNOWN'
+        ? ocrGradingCompany
+        : manualCert
+          ? 'PSA'
+          : ocrGradingCompany;
+
   const initialResult: ScannerResult = {
     scanId: '',
     imageUrl: uploadedImageUrl,
@@ -255,7 +319,7 @@ async function handleScanRequest(req: Request) {
     ocrConfidence,
     certLookupSuccess: false,
     certNumber: manualCert || ocrCertNumber,
-    gradingCompany: ocrGradingCompany,
+    gradingCompany: resolvedGradingCompany,
     itemStatus: null,
     cardId: null,
     cardPlayer: null,
@@ -298,58 +362,43 @@ async function handleScanRequest(req: Request) {
 
   const lookupCertNumber =
     manualCert ||
-    (ocrGradingCompany === 'PSA' && ocrCertNumber && isPlausibleCertNumber(ocrCertNumber) ? ocrCertNumber : null);
+    (ocrCertNumber && isPlausibleCertNumber(ocrCertNumber) ? ocrCertNumber : null);
 
-  if (lookupCertNumber) {
-    const psaResult = await lookupPSACert(lookupCertNumber);
+  const lookupCompany = normalizeLookupGradingCompany(
+    manualGradingCompany && manualGradingCompany !== 'UNKNOWN'
+      ? manualGradingCompany
+      : resolvedGradingCompany ?? 'PSA'
+  );
 
-    if (psaResult) {
-      finalResult = {
-        ...finalResult,
-        certLookupSuccess: true,
-        ocrConfidence: 'high',
-        certNumber: psaResult.certNumber,
-        gradingCompany: 'PSA',
-        itemStatus: 'Y',
-        cardPlayer: psaResult.player,
-        cardYear: psaResult.year,
-        cardManufacturer: psaResult.manufacturer,
-        cardSport: psaResult.sport,
-        cardSet: psaResult.manufacturer,
-        cardParallel: psaResult.parallel,
-        cardNumber: psaResult.cardNumber,
-        officialGrade: psaResult.grade,
-        gradeDescription: psaResult.gradeDescription,
-        qualifierCode: psaResult.qualifierCode,
-        autographGrade: psaResult.autographGrade,
-        isDualCert: psaResult.isDualCert,
-        popAtGrade: psaResult.popAtGrade,
-        popWithQualifier: psaResult.popWithQualifier,
-        popHigher: psaResult.popHigher,
-        error: undefined,
+  if (lookupCertNumber && lookupCompany !== 'CGC') {
+    const lookupOutcome = await lookupCertWithStatus(lookupCertNumber, lookupCompany);
+
+    if (lookupOutcome.ok) {
+      const { result: mapped, rawCertResponse: lookupRaw } = applyCertLookup(finalResult, lookupOutcome.result);
+      finalResult = mapped;
+      rawCertResponse = {
+        ...(rawCertResponse ?? {}),
+        ...lookupRaw,
+        fromCache: lookupOutcome.fromCache,
       };
 
       try {
         const card = await findOrCreateCard({
-          player: psaResult.player,
-          year: psaResult.year,
-          manufacturer: psaResult.manufacturer,
-          sport: psaResult.sport,
-          card_number: psaResult.cardNumber,
-          parallel: psaResult.parallel,
-          psa_spec_id: psaResult.psaSpecId,
-          source: 'psa_api',
-          source_id: psaResult.certNumber,
+          player: lookupOutcome.result.player,
+          year: lookupOutcome.result.year ?? undefined,
+          manufacturer: lookupOutcome.result.manufacturer ?? lookupOutcome.result.setName ?? undefined,
+          set_name: lookupOutcome.result.setName ?? undefined,
+          sport: lookupOutcome.result.sport ?? undefined,
+          card_number: lookupOutcome.result.cardNumber ?? undefined,
+          parallel: lookupOutcome.result.parallel,
+          psa_spec_id: lookupOutcome.result.psaSpecId ?? undefined,
+          source: lookupOutcome.result.source,
+          source_id: lookupOutcome.result.certNumber,
         });
 
         finalResult = {
           ...finalResult,
           cardId: card.id,
-        };
-
-        rawCertResponse = {
-          ...rawCertResponse,
-          psa: psaResult,
         };
       } catch (error) {
         console.error('Card catalog sync failed', {
@@ -357,24 +406,31 @@ async function handleScanRequest(req: Request) {
         });
         finalResult = {
           ...finalResult,
-          error: 'We found the PSA cert, but could not save the card details. You can still save manually.',
+          error: 'We found the cert, but could not save the card details. You can still save manually.',
         };
       }
-    } else if (manualCert) {
+    } else {
       finalResult = {
         ...finalResult,
-        error: 'PSA could not find that cert number. Check the number and try again.',
+        gradingCompany: lookupCompany,
+        error: lookupOutcome.error.message,
+        lookupSource: 'failed',
       };
     }
-  } else if (!ocrCertNumber) {
+  } else if (!ocrCertNumber && !manualCert) {
     finalResult = {
       ...finalResult,
-      error: 'We could not read a cert number from the label. Enter your PSA cert number below.',
+      error: 'We could not read a cert number from the label. Enter your cert number below.',
     };
-  } else if (ocrGradingCompany && ocrGradingCompany !== 'PSA') {
+  } else if (lookupCompany === 'CGC') {
     finalResult = {
       ...finalResult,
-      error: 'This scanner currently supports PSA slabs only.',
+      error: 'CGC cert lookup is not available yet. You can still save this scan manually after entering details.',
+    };
+  } else if (ocrCertNumber && !isPlausibleCertNumber(ocrCertNumber)) {
+    finalResult = {
+      ...finalResult,
+      error: 'We read a number that does not look like a cert. Enter the full cert number below.',
     };
   }
 
@@ -382,6 +438,7 @@ async function handleScanRequest(req: Request) {
     try {
       await updateScanRow(scanId, {
         ...finalResult,
+        imageUrl: uploadedImageUrl,
         rawCertResponse,
       });
     } catch (error) {
@@ -391,11 +448,13 @@ async function handleScanRequest(req: Request) {
     }
   }
 
+  const saved = await getSavedCollectionForScan(scanId);
   const quota = await getRateLimitStatus(supabaseUserId, 'scan', SCAN_LIMIT);
 
   return NextResponse.json({
     ...finalResult,
     scanId,
+    ...saved,
     remainingScans: quota.remaining,
   });
 }

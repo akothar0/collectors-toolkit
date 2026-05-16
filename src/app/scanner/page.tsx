@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, ChevronDown, Loader2, ScanLine, Upload } from 'lucide-react';
+import { Check, ChevronDown, History, Loader2, ScanLine, Upload } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { ScanResult } from '@/components/ScanResult';
@@ -132,8 +133,15 @@ export default function ScannerPage() {
                 Graded Card Scanner
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Upload a photo of your graded slab to identify the card and verify cert details.
+                Upload a photo of your graded slab to identify the card and verify cert details for PSA, BGS, and SGC.
               </p>
+              <Link
+                href="/scanner/history"
+                className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline"
+              >
+                <History className="h-4 w-4" />
+                View scan history
+              </Link>
             </div>
 
             <details className="group rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
@@ -217,7 +225,7 @@ export default function ScannerPage() {
               <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
                 <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">What happens next</p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
-                  The scan reads the slab label, verifies the PSA cert when possible, and saves the attempt whether or not the lookup succeeds.
+                  The scan reads the slab label, verifies the cert when possible, and saves the attempt whether or not the lookup succeeds.
                 </p>
               </div>
             </div>

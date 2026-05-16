@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { normalizePSACertBody } from '../src/lib/cert-lookup/psa';
+import {
+  classifyPsaApiFailure,
+  normalizePSACertBody,
+  PSA_QUOTA_EXCEEDED_MESSAGE,
+} from '../src/lib/cert-lookup/psa';
 
 test('normalizePSACertBody maps live PSA card payload', () => {
   const result = normalizePSACertBody('113364366', {
@@ -65,4 +69,17 @@ test('normalizePSACertBody returns null for invalid or DNA certs', () => {
     }),
     null
   );
+});
+
+test('classifyPsaApiFailure detects daily quota errors', () => {
+  const outcome = classifyPsaApiFailure(
+    429,
+    'API calls quota exceeded! maximum admitted 100 per Day. Please contact collectors-apis@collectors.com'
+  );
+
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) {
+    assert.equal(outcome.code, 'quota_exceeded');
+    assert.equal(outcome.message, PSA_QUOTA_EXCEEDED_MESSAGE);
+  }
 });

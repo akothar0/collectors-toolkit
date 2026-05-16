@@ -44,7 +44,13 @@ export function extractCertDigits(value: unknown): string | null {
  * High is assigned only after PSA lookup succeeds (see scan route).
  */
 export function inferConfidence(certNumber: string | null, gradingCompany: OcrGradingCompany | null): OcrConfidence {
-  if (gradingCompany === 'PSA' && isPlausibleCertNumber(certNumber)) {
+  const knownGrader =
+    gradingCompany === 'PSA' ||
+    gradingCompany === 'BGS' ||
+    gradingCompany === 'SGC' ||
+    gradingCompany === 'CGC';
+
+  if (knownGrader && isPlausibleCertNumber(certNumber)) {
     return 'medium';
   }
 

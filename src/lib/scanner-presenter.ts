@@ -22,9 +22,18 @@ export function formatGradeValue(grade: number | null) {
   return Number.isInteger(grade) ? grade.toFixed(0) : grade.toFixed(1);
 }
 
-export function confidenceLabel(confidence: OcrConfidence) {
+export function getGraderLabel(gradingCompany: string | null | undefined) {
+  const company = (gradingCompany ?? '').trim().toUpperCase();
+  if (company === 'PSA' || company === 'BGS' || company === 'SGC' || company === 'CGC') {
+    return company;
+  }
+
+  return 'Cert';
+}
+
+export function confidenceLabel(confidence: OcrConfidence, gradingCompany?: string | null) {
   if (confidence === 'high') {
-    return 'PSA verified';
+    return `${getGraderLabel(gradingCompany)} verified`;
   }
 
   if (confidence === 'medium') {
@@ -49,7 +58,7 @@ export function getVerifiedSubtitle(scan: ScannerResult) {
   }
 
   const parts = [
-    formatCatalogText(scan.cardManufacturer),
+    formatCatalogText(scan.cardSet ?? scan.cardManufacturer),
     scan.cardNumber,
     formatCatalogText(scan.cardParallel),
   ].filter(Boolean);
@@ -59,4 +68,87 @@ export function getVerifiedSubtitle(scan: ScannerResult) {
 
 export function needsCertConfirmation(scan: ScannerResult) {
   return !scan.certLookupSuccess;
+}
+
+export function formatPopCount(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value.toLocaleString('en-US');
+}
+
+export function getVerifiedCategoryLabel(scan: ScannerResult) {
+  if (!scan.certLookupSuccess || !scan.cardSport?.trim()) {
+    return null;
+  }
+
+  const hasCatalogParts = Boolean(
+    scan.cardSet?.trim() || scan.cardManufacturer?.trim() || scan.cardNumber?.trim() || scan.cardParallel?.trim()
+  );
+  if (!hasCatalogParts) {
+    return null;
+  }
+
+  return formatCatalogText(scan.cardSport);
+}
+
+export function formatAutographGradeLabel(autographGrade: number | null | undefined) {
+  if (autographGrade === null || autographGrade === undefined || !Number.isFinite(autographGrade)) {
+    return null;
+  }
+
+  return `Auto grade ${formatGradeValue(autographGrade)}`;
+}
+
+export function formatSubGradesLabel(subGrades: ScannerResult['subGrades']) {
+  if (!subGrades) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (subGrades.centering !== undefined) {
+    parts.push(`C ${formatGradeValue(subGrades.centering)}`);
+  }
+  if (subGrades.corners !== undefined) {
+    parts.push(`CR ${formatGradeValue(subGrades.corners)}`);
+  }
+  if (subGrades.edges !== undefined) {
+    parts.push(`E ${formatGradeValue(subGrades.edges)}`);
+  }
+  if (subGrades.surface !== undefined) {
+    parts.push(`S ${formatGradeValue(subGrades.surface)}`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+export function hasPsaPopulationStats(scan: ScannerResult) {
+  return scan.gradingCompany === 'PSA' && (scan.popAtGrade !== null || scan.popHigher !== null);
+}
+
+export function getCertRegistryLabel(gradingCompany: string | null | undefined) {
+  const company = getGraderLabel(gradingCompany);
+  if (company === 'PSA') {
+    return 'PSA cert';
+  }
+
+  if (company === 'BGS') {
+    return 'BGS cert';
+  }
+
+  if (company === 'SGC') {
+    return 'SGC cert';
+  }
+
+  return 'Cert number';
+}
+
+export function getCertLinkLabel(gradingCompany: string | null | undefined) {
+  const company = getGraderLabel(gradingCompany);
+  if (company === 'Cert') {
+    return 'View cert';
+  }
+
+  return `View on ${company}`;
 }

@@ -22,6 +22,20 @@ export type PSALookupResult = {
   source: 'psa_api';
 };
 
+export type PSALookupErrorCode =
+  | 'not_configured'
+  | 'quota_exceeded'
+  | 'unauthorized'
+  | 'not_found'
+  | 'parse_error';
+
+export type PSALookupOutcome =
+  | { ok: true; result: PSALookupResult }
+  | { ok: false; code: PSALookupErrorCode; message: string };
+
+export const PSA_QUOTA_EXCEEDED_MESSAGE =
+  'PSA API daily limit reached (100 calls/day on the free tier). Try again tomorrow or view the cert on psacard.com.';
+
 function getToken() {
   return process.env.PSA_API_TOKEN ?? '';
 }
@@ -187,12 +201,62 @@ export function normalizePSACertBody(certNumber: string, body: unknown): PSALook
   };
 }
 
-export async function lookupPSACert(certNumber: string): Promise<PSALookupResult | null> {
+export function classifyPsaApiFailure(status: number, bodyText: string): PSALookupOutcome {
+  const normalized = bodyText.toLowerCase();
+
+  if (status === 429 || normalized.includes('quota exceeded')) {
+    return { ok: false, code: 'quota_exceeded', message: PSA_QUOTA_EXCEEDED_MESSAGE };
+  }
+
+  if (status === 401 || status === 403 || normalized.includes('unauthorized')) {
+    return {
+      ok: false,
+      code: 'unauthorized',
+      message: 'PSA API rejected our credentials. Check PSA_API_TOKEN in server settings.',
+    };
+  }
+
+  if (status === 404) {
+    return {
+      ok: false,
+      code: 'not_found',
+      message: 'PSA could not find that cert number. Check the number and try again.',
+    };
+  }
+
+  return {
+    ok: false,
+    code: 'not_found',
+    message: 'PSA could not find that cert number. Check the number and try again.',
+  };
+}
+
+async function readResponseText(response: Response) {
+  try {
+    return await response.text();
+  } catch {
+    return '';
+  }
+}
+
+export async function lookupPSACertWithStatus(certNumber: string): Promise<PSALookupOutcome> {
   const token = getToken();
   const normalized = normalizeCertNumber(certNumber);
 
-  if (!token || !normalized) {
-    return null;
+  if (!token) {
+    return {
+      ok: false,
+      code: 'not_configured',
+      message: 'PSA API is not configured on the server. Add PSA_API_TOKEN in Vercel environment variables.',
+    };
+  }
+
+  if (!normalized) {
+    return {
+      ok: false,
+      code: 'not_found',
+      message: 'Enter a valid PSA cert number.',
+    };
   }
 
   try {
@@ -207,27 +271,56 @@ export async function lookupPSACert(certNumber: string): Promise<PSALookupResult
       }
     );
 
+    const bodyText = await readResponseText(response);
+
     if (!response.ok) {
       console.error('PSA cert lookup failed', {
         certNumber: normalized,
         status: response.status,
+        body: bodyText.slice(0, 200),
       });
-      return null;
+      return classifyPsaApiFailure(response.status, bodyText);
     }
 
-    const body = (await response.json()) as unknown;
+    let body: unknown = null;
+    try {
+      body = bodyText ? (JSON.parse(bodyText) as unknown) : null;
+    } catch {
+      return {
+        ok: false,
+        code: 'parse_error',
+        message: 'PSA returned an unexpected response. Try again later.',
+      };
+    }
+
     const result = normalizePSACertBody(normalized, body);
-
     if (!result) {
-      return null;
+      console.error('PSA cert payload could not be normalized', {
+        certNumber: normalized,
+        body: bodyText.slice(0, 500),
+      });
+      return {
+        ok: false,
+        code: 'parse_error',
+        message: 'PSA returned cert data we could not read. Try again or view the cert on psacard.com.',
+      };
     }
 
-    return result;
+    return { ok: true, result };
   } catch (error) {
     console.error('PSA cert lookup error', {
       certNumber: normalized,
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    return {
+      ok: false,
+      code: 'parse_error',
+      message: 'Unable to reach the PSA API right now. Try again in a few minutes.',
+    };
   }
+}
+
+export async function lookupPSACert(certNumber: string): Promise<PSALookupResult | null> {
+  const outcome = await lookupPSACertWithStatus(certNumber);
+  return outcome.ok ? outcome.result : null;
 }
