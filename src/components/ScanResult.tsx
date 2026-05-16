@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { ExternalLink, Loader2, RotateCcw, Save, Search, X } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Loader2, RotateCcw, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { readJsonResponse } from '@/lib/http-json';
 import { getCertUrl } from '@/lib/cert-number';
@@ -16,10 +16,12 @@ import {
   getCertLinkLabel,
   getCertRegistryLabel,
   getGraderLabel,
+  getVerificationDetail,
+  getVerificationHeadline,
   getVerifiedCategoryLabel,
   getVerifiedSubtitle,
   getVerifiedTitle,
-  hasPsaPopulationStats,
+  hasRegistryPopulationStats,
   needsCertConfirmation,
 } from '@/lib/scanner-presenter';
 import type { OcrGradingCompany, ScannerResult } from '@/lib/scanner';
@@ -327,7 +329,7 @@ function ResultHeaderCopy({ result }: { result: ScannerResult }) {
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Scan result</p>
       <p className="mt-1 text-sm text-slate-500">
         {result.certLookupSuccess
-          ? confidenceLabel('high', result.gradingCompany)
+          ? getVerificationHeadline(result)
           : `Confirm your ${getGraderLabel(result.gradingCompany ?? result.ocrGradingCompany)} cert number`}
       </p>
     </div>
@@ -355,6 +357,7 @@ function VerifiedSummary({
 
   return (
     <div className="space-y-4">
+      <VerificationBanner scan={scan} />
       <SummaryTop title={title} subtitle={subtitle} grade={grade} gradingCompany={scan.gradingCompany} />
       {gradeDescription ? (
         <p className="text-sm text-slate-600">{formatCatalogText(gradeDescription)}</p>
@@ -379,6 +382,23 @@ function VerifiedSummary({
             </a>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function VerificationBanner({ scan }: { scan: ScannerResult }) {
+  return (
+    <div
+      className="flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 ring-1 ring-emerald-100"
+      role="status"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+        <BadgeCheck className="h-5 w-5" aria-hidden />
+      </div>
+      <div className="min-w-0 space-y-1">
+        <p className="text-base font-semibold text-emerald-950">{getVerificationHeadline(scan)}</p>
+        <p className="text-sm leading-6 text-emerald-900/90">{getVerificationDetail(scan)}</p>
       </div>
     </div>
   );
@@ -425,12 +445,21 @@ function SummaryTopLayout({
 function VerifiedStats({ scan }: { scan: ScannerResult }) {
   const category = getVerifiedCategoryLabel(scan);
   const autographLabel = formatAutographGradeLabel(scan.autographGrade);
-  const showPopulation = hasPsaPopulationStats(scan);
+  const showPopulation = hasRegistryPopulationStats(scan);
   const popAtGrade = formatPopCount(scan.popAtGrade);
   const popHigher = formatPopCount(scan.popHigher);
   const popWithQualifier = formatPopCount(scan.popWithQualifier);
   const showPopWithQualifier =
-    scan.popWithQualifier !== null && scan.popWithQualifier > 0 && popWithQualifier !== null;
+    scan.gradingCompany === 'PSA' &&
+    scan.popWithQualifier !== null &&
+    scan.popWithQualifier > 0 &&
+    popWithQualifier !== null;
+  const popLabel =
+    scan.gradingCompany === 'PSA'
+      ? 'PSA population'
+      : scan.gradingCompany === 'BGS'
+        ? 'BGS population'
+        : 'Population at grade';
 
   if (!category && !showPopulation && !autographLabel) {
     return null;
@@ -445,7 +474,7 @@ function VerifiedStats({ scan }: { scan: ScannerResult }) {
         <div
           className={`grid gap-3 ${showPopWithQualifier ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}
         >
-          {popAtGrade !== null ? <StatCard label="PSA population" value={popAtGrade} /> : null}
+          {popAtGrade !== null ? <StatCard label={popLabel} value={popAtGrade} /> : null}
           {popHigher !== null ? <StatCard label="Pop higher" value={popHigher} /> : null}
           {showPopWithQualifier ? <StatCard label="Pop w/ qualifier" value={popWithQualifier} /> : null}
         </div>

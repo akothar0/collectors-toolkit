@@ -5,10 +5,13 @@ import {
   formatAutographGradeLabel,
   formatPopCount,
   getGraderLabel,
+  getVerificationDetail,
+  getVerificationHeadline,
   getVerifiedCategoryLabel,
   getVerifiedSubtitle,
   getVerifiedTitle,
   hasPsaPopulationStats,
+  hasRegistryPopulationStats,
   needsCertConfirmation,
 } from '../src/lib/scanner-presenter';
 import { inferConfidence as inferOcrConfidence } from '../src/lib/scanner-ocr';
@@ -23,6 +26,7 @@ const verifiedScan: ScannerResult = {
   certLookupSuccess: true,
   certNumber: '113364366',
   gradingCompany: 'PSA',
+  lookupSource: 'psa_api',
   itemStatus: 'Y',
   cardId: 'card-1',
   cardPlayer: 'CHRISTIAN PULISIC',
@@ -67,6 +71,29 @@ test('hasPsaPopulationStats is true when PSA pop fields exist', () => {
     false
   );
   assert.equal(hasPsaPopulationStats({ ...verifiedScan, gradingCompany: 'BGS' }), false);
+});
+
+test('hasRegistryPopulationStats includes BGS population fields', () => {
+  assert.equal(hasRegistryPopulationStats(verifiedScan), true);
+  assert.equal(
+    hasRegistryPopulationStats({
+      ...verifiedScan,
+      gradingCompany: 'BGS',
+      lookupSource: 'beckett_scrape',
+      popAtGrade: 65,
+      popHigher: 4,
+    }),
+    true
+  );
+});
+
+test('getVerificationHeadline names the registry source', () => {
+  assert.equal(getVerificationHeadline(verifiedScan), 'Verified on PSA');
+  assert.equal(
+    getVerificationHeadline({ ...verifiedScan, gradingCompany: 'BGS', lookupSource: 'beckett_scrape' }),
+    'Verified on Beckett'
+  );
+  assert.match(getVerificationDetail(verifiedScan), /113364366/);
 });
 
 test('confidenceLabel reflects grading company when verified', () => {

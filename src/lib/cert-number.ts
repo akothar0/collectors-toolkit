@@ -8,6 +8,25 @@ export function normalizeCertNumber(value: string | null | undefined) {
   return digits.length > 0 ? digits : null;
 }
 
+/**
+ * Cert variants to try against grader APIs. Beckett often keys on the numeric id
+ * without leading zeros (e.g. slab 0005957409 → API item_id 5957409).
+ */
+export function getCertLookupCandidates(value: string | null | undefined) {
+  const normalized = normalizeCertNumber(value);
+  if (!normalized) {
+    return [];
+  }
+
+  const candidates = [normalized];
+  const withoutLeadingZeros = normalized.replace(/^0+/, '') || normalized;
+  if (withoutLeadingZeros !== normalized) {
+    candidates.push(withoutLeadingZeros);
+  }
+
+  return candidates;
+}
+
 /** PSA cert numbers vary in length; use a low floor to ignore obvious non-cert reads (e.g. a lone grade digit). */
 export function isPlausibleCertNumber(value: string | null | undefined) {
   const digits = normalizeCertNumber(value);

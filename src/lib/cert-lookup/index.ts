@@ -1,4 +1,4 @@
-import { normalizeCertNumber } from '@/lib/cert-number';
+import { getCertLookupCandidates, normalizeCertNumber } from '@/lib/cert-number';
 import { lookupBGS } from '@/lib/cert-lookup/bgs';
 import { lookupCardGradeFallback } from '@/lib/cert-lookup/cardgrade';
 import { psaResultToCertLookup } from '@/lib/cert-lookup/psa-adapter';
@@ -85,30 +85,28 @@ export async function getCachedCertLookup(
   certNumber: string,
   gradingCompany: string
 ): Promise<CertLookupResult | null> {
-  const normalizedCert = normalizeCertNumber(certNumber);
   const company = normalizeLookupGradingCompany(gradingCompany);
-  if (!normalizedCert) {
-    return null;
+
+  for (const candidate of getCertLookupCandidates(certNumber)) {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('graded_scans')
+      .select(
+        'cert_number, grading_company, lookup_source, raw_cert_response, official_grade, grade_description, pop_at_grade, pop_higher'
+      )
+      .eq('cert_number', candidate)
+      .eq('grading_company', company)
+      .in('lookup_source', SUCCESS_LOOKUP_SOURCES)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data) {
+      return rowToCertLookup(data as Record<string, unknown>);
+    }
   }
 
-  const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from('graded_scans')
-    .select(
-      'cert_number, grading_company, lookup_source, raw_cert_response, official_grade, grade_description, pop_at_grade, pop_higher'
-    )
-    .eq('cert_number', normalizedCert)
-    .eq('grading_company', company)
-    .in('lookup_source', SUCCESS_LOOKUP_SOURCES)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return rowToCertLookup(data as Record<string, unknown>);
+  return null;
 }
 
 async function lookupByCompany(
@@ -167,40 +165,49 @@ export async function lookupCertWithStatus(
   certNumber: string,
   gradingCompany: string
 ): Promise<CertLookupOutcome> {
-  const normalizedCert = normalizeCertNumber(certNumber);
+  const candidates = getCertLookupCandidates(certNumber);
   const company = normalizeLookupGradingCompany(gradingCompany);
 
-  if (!normalizedCert) {
+  if (candidates.length === 0) {
     return {
       ok: false,
       error: { code: 'invalid_cert', message: 'Enter a valid cert number.' },
     };
   }
 
-  const cached = await getCachedCertLookup(normalizedCert, company);
+  const cached = await getCachedCertLookup(certNumber, company);
   if (cached) {
     return { ok: true, result: cached, fromCache: true };
   }
 
-  const primary = await lookupByCompany(normalizedCert, company);
-  if (primary.result) {
-    return { ok: true, result: primary.result, fromCache: false };
+  let lastError: CertLookupError | undefined;
+
+  for (const candidate of candidates) {
+    const outcome = await lookupByCompany(candidate, company);
+    if (outcome.result) {
+      return { ok: true, result: outcome.result, fromCache: false };
+    }
+
+    if (outcome.error) {
+      lastError = outcome.error;
+    }
+
+    if (outcome.error && company === 'PSA') {
+      return { ok: false, error: outcome.error };
+    }
   }
 
-  if (primary.error && company === 'PSA') {
-    return { ok: false, error: primary.error };
-  }
-
-  const fallback = await lookupCardGradeFallback(normalizedCert);
+  const primaryCert = candidates[0];
+  const fallback = await lookupCardGradeFallback(primaryCert);
   if (fallback) {
     return { ok: true, result: fallback, fromCache: false };
   }
 
   return {
     ok: false,
-    error: primary.error ?? {
+    error: lastError ?? {
       code: 'not_found',
-      message: certLookupFailureMessage(company, normalizedCert),
+      message: certLookupFailureMessage(company, primaryCert),
     },
   };
 }

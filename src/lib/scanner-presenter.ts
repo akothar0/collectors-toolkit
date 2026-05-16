@@ -1,4 +1,4 @@
-import type { OcrConfidence, ScannerResult } from '@/lib/scanner';
+import type { LookupSource, OcrConfidence, ScannerResult } from '@/lib/scanner';
 
 export function formatCatalogText(value: string | null | undefined) {
   if (!value?.trim()) {
@@ -125,6 +125,50 @@ export function formatSubGradesLabel(subGrades: ScannerResult['subGrades']) {
 
 export function hasPsaPopulationStats(scan: ScannerResult) {
   return scan.gradingCompany === 'PSA' && (scan.popAtGrade !== null || scan.popHigher !== null);
+}
+
+export function hasRegistryPopulationStats(scan: ScannerResult) {
+  return scan.popAtGrade !== null || scan.popHigher !== null;
+}
+
+export function getRegistryVerificationLabel(lookupSource: LookupSource | null | undefined) {
+  if (lookupSource === 'psa_api') {
+    return 'PSA';
+  }
+
+  if (lookupSource === 'beckett_scrape') {
+    return 'Beckett';
+  }
+
+  if (lookupSource === 'sgc_scrape') {
+    return 'SGC';
+  }
+
+  if (lookupSource === 'cardgrade_io') {
+    return 'CardGrade';
+  }
+
+  return null;
+}
+
+export function getVerificationHeadline(scan: ScannerResult) {
+  const registry =
+    getRegistryVerificationLabel(scan.lookupSource ?? undefined) ??
+    (scan.certLookupSuccess ? getGraderLabel(scan.gradingCompany) : null);
+  if (registry) {
+    return `Verified on ${registry}`;
+  }
+
+  return `${getGraderLabel(scan.gradingCompany)} verified`;
+}
+
+export function getVerificationDetail(scan: ScannerResult) {
+  const registry = getRegistryVerificationLabel(scan.lookupSource ?? undefined);
+  if (registry) {
+    return `Cert ${scan.certNumber ?? ''} matches the official ${registry} grading registry.`;
+  }
+
+  return 'This cert number matches an official grading registry.';
 }
 
 export function getCertRegistryLabel(gradingCompany: string | null | undefined) {
