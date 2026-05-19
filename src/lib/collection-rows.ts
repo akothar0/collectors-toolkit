@@ -16,6 +16,8 @@ export type CollectionRow = {
   purchase_price: number | null;
   purchase_date: string | null;
   current_value: number | null;
+  value_source?: string | null;
+  market_price_sample_size?: number | null;
   created_at: string;
   cards: {
     player: string;
@@ -58,6 +60,9 @@ export function mapCollectionRow(row: CollectionRow): CollectionCardItem {
     purchasePrice: row.purchase_price != null ? Number(row.purchase_price) : null,
     purchaseDate: row.purchase_date,
     currentValue: row.current_value != null ? Number(row.current_value) : null,
+    valueSource: row.value_source ?? null,
+    marketPriceSampleSize:
+      row.market_price_sample_size != null ? Number(row.market_price_sample_size) : null,
     createdAt: row.created_at,
   };
 }

@@ -34,6 +34,16 @@ export type PortfolioRecentRow = {
 };
 
 function cardValue(row: CollectionCardItem) {
+  const hasMarketValue =
+    row.valueSource === 'cardsight' &&
+    (row.marketPriceSampleSize ?? 0) >= 3 &&
+    row.currentValue != null &&
+    Number.isFinite(row.currentValue);
+
+  if (hasMarketValue) {
+    return row.currentValue as number;
+  }
+
   if (row.currentValue != null && Number.isFinite(row.currentValue)) {
     return row.currentValue;
   }
