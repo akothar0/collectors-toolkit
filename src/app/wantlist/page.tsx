@@ -1,14 +1,22 @@
 'use client';
 
-import Link from 'next/link';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { Heart, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ExternalLink, Heart, Loader2, Plus, Trash2 } from 'lucide-react';
 import { FetchErrorBanner } from '@/components/fetch-error-banner';
 import { useEffect, useState } from 'react';
 import { buildWantListAddUrl, type WantListItem } from '@/lib/wantlist';
 import { formatDateLabel, formatPrice } from '@/lib/collection-presenter';
 import { readJsonResponse } from '@/lib/http-json';
+
+function buildEbaySoldCompsUrl(description: string) {
+  const params = new URLSearchParams({
+    _nkw: description,
+    LH_Sold: '1',
+    LH_Complete: '1',
+  });
+  return `https://www.ebay.com/sch/i.html?${params.toString()}`;
+}
 
 export default function WantListPage() {
   const router = useRouter();
@@ -24,6 +32,7 @@ export default function WantListPage() {
   const [targetPrice, setTargetPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [adding, setAdding] = useState(false);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   const [fulfillPrompt, setFulfillPrompt] = useState<WantListItem | null>(null);
 
@@ -79,6 +88,7 @@ export default function WantListPage() {
       setTargetGrade('');
       setTargetPrice('');
       setNotes('');
+      setShowMoreDetails(false);
       await loadItems();
     } catch (addError) {
       setError(addError instanceof Error ? addError.message : 'Unable to add item.');
@@ -134,154 +144,181 @@ export default function WantListPage() {
         </div>
       </div>
 
-      <form
-        onSubmit={handleAdd}
-        className="space-y-4 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft md:p-8"
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Add item</h2>
-        <label className="block text-sm font-medium text-slate-700">
-          Description <span className="text-rose-500">*</span>
-          <input
-            type="text"
-            id="wantlist-description"
-            required
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="2011 Topps Update Mike Trout RC"
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-          />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block text-sm font-medium text-slate-700">
-            Player
-            <input
-              type="text"
-              value={player}
-              onChange={(e) => setPlayer(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Year
-            <input
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Set
-            <input
-              type="text"
-              value={setName}
-              onChange={(e) => setSetName(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
-            Target grade
-            <input
-              type="number"
-              step="0.5"
-              min={1}
-              max={10}
-              value={targetGrade}
-              onChange={(e) => setTargetGrade(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Target price ($)
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
-        </div>
-        <label className="block text-sm font-medium text-slate-700">
-          Notes
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={adding}
-          className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-        >
-          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Add to Want List
-        </button>
-      </form>
-
       {error ? <FetchErrorBanner message={error} onRetry={() => void loadItems()} /> : null}
 
-      {loading ? (
-        <ul className="space-y-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <li key={index} className="h-20 animate-pulse rounded-[1.5rem] bg-slate-100" />
-          ))}
-        </ul>
-      ) : items.length === 0 ? (
-        <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white px-8 py-16 text-center shadow-soft">
-          <Heart className="mx-auto h-12 w-12 text-slate-300" />
-          <p className="mt-4 text-lg font-medium text-slate-950">Nothing on your want list</p>
-          <p className="mt-2 text-sm text-slate-600">Add cards you are hunting for at shows and online.</p>
+      <div className="pb-36 md:pb-0">
+        {loading ? (
+          <ul className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <li key={index} className="h-20 animate-pulse rounded-[1.5rem] bg-slate-100" />
+            ))}
+          </ul>
+        ) : items.length === 0 ? (
+          <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white px-8 py-16 text-center shadow-soft">
+            <Heart className="mx-auto h-12 w-12 text-slate-300" />
+            <p className="mt-4 text-lg font-medium text-slate-950">Nothing on your want list</p>
+            <p className="mt-2 text-sm text-slate-600">Add cards you are hunting for at shows and online.</p>
+            <button
+              type="button"
+              onClick={() => document.getElementById('wantlist-description')?.focus()}
+              className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add Item
+            </button>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-semibold text-slate-950">{item.description}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {[item.player, item.year, item.setName].filter(Boolean).join(' · ') || 'No details'}
+                    {item.targetGrade != null ? ` · Target grade ${item.targetGrade}` : ''}
+                    {item.targetPrice != null ? ` · ${formatPrice(item.targetPrice)}` : ''}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Added {formatDateLabel(item.createdAt)}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={buildEbaySoldCompsUrl(item.description)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Find on eBay
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkFound(item)}
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Mark Found
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(item.id)}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <form
+        onSubmit={handleAdd}
+        className="fixed inset-x-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.06)] backdrop-blur bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:relative md:inset-auto md:bottom-auto md:rounded-[1.75rem] md:border md:p-6 md:shadow-soft lg:p-8"
+      >
+        <div className="mx-auto flex max-w-7xl flex-col gap-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              id="wantlist-description"
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add to want list..."
+              className="min-h-11 flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+            />
+            <button
+              type="submit"
+              disabled={adding}
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Add
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => document.getElementById('wantlist-description')?.focus()}
-            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            onClick={() => setShowMoreDetails((open) => !open)}
+            className="inline-flex items-center gap-1 self-start text-sm font-medium text-slate-600 hover:text-slate-950"
           >
-            <Plus className="h-4 w-4" />
-            Add Item
+            {showMoreDetails ? 'Fewer details' : 'More details'}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showMoreDetails ? 'rotate-180' : ''}`}
+            />
           </button>
+
+          {showMoreDetails ? (
+            <div className="space-y-4 border-t border-slate-100 pt-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Player
+                  <input
+                    type="text"
+                    value={player}
+                    onChange={(e) => setPlayer(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Year
+                  <input
+                    type="number"
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Set
+                  <input
+                    type="text"
+                    value={setName}
+                    onChange={(e) => setSetName(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Target grade
+                  <input
+                    type="number"
+                    step="0.5"
+                    min={1}
+                    max={10}
+                    value={targetGrade}
+                    onChange={(e) => setTargetGrade(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Target price ($)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={targetPrice}
+                    onChange={(e) => setTargetPrice(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  />
+                </label>
+              </div>
+              <label className="block text-sm font-medium text-slate-700">
+                Notes
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-semibold text-slate-950">{item.description}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {[item.player, item.year, item.setName].filter(Boolean).join(' · ') || 'No details'}
-                  {item.targetGrade != null ? ` · Target grade ${item.targetGrade}` : ''}
-                  {item.targetPrice != null ? ` · ${formatPrice(item.targetPrice)}` : ''}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">Added {formatDateLabel(item.createdAt)}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleMarkFound(item)}
-                  className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
-                >
-                  Mark Found
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(item.id)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                >
-                  <Trash2 className="h-4 w-4" /> Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      </form>
 
       {fulfillPrompt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
