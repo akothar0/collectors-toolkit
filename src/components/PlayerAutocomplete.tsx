@@ -21,6 +21,8 @@ export function PlayerAutocomplete({
   const [suggestions, setSuggestions] = useState<CardSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [fieldActive, setFieldActive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,25 +31,28 @@ export function PlayerAutocomplete({
     if (!fieldActive || value.trim().length < 2) {
       setSuggestions([]);
       setOpen(false);
+      setSearched(false);
       return;
     }
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setLoading(true);
+      setFetchFailed(false);
       try {
         const response = await fetch(`/api/cards/search?q=${encodeURIComponent(value.trim())}`, {
           signal: controller.signal,
         });
-        if (!response.ok) return;
+        if (!response.ok) { setFetchFailed(true); return; }
         const data = (await response.json()) as { results?: CardSearchResult[] };
         const results = data.results ?? [];
         setSuggestions(results);
+        setSearched(true);
         if (inputRef.current === document.activeElement) {
-          setOpen(results.length > 0);
+          setOpen(true);
         }
-      } catch {
-        // Ignore aborted or network errors.
+      } catch (err) {
+        if ((err as { name?: string }).name !== 'AbortError') setFetchFailed(true);
       } finally {
         setLoading(false);
       }
@@ -96,9 +101,12 @@ export function PlayerAutocomplete({
       {loading ? (
         <p className="mt-1 text-xs text-ink-3">Searching…</p>
       ) : null}
-      {open && suggestions.length > 0 ? (
+      {fetchFailed ? (
+        <p className="mt-1 text-xs text-ink-3">Couldn&apos;t load suggestions.</p>
+      ) : null}
+      {open ? (
         <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded border border-rule bg-surface py-1">
-          {suggestions.map((card) => (
+          {suggestions.length > 0 ? suggestions.map((card) => (
             <li key={card.id}>
               <button
                 type="button"
@@ -108,6 +116,7 @@ export function PlayerAutocomplete({
                   onChange(card.player);
                   onSelectCard?.(card);
                   setOpen(false);
+                  setSearched(false);
                 }}
               >
                 <span className="text-sm font-medium text-ink">{card.player}</span>
@@ -116,7 +125,9 @@ export function PlayerAutocomplete({
                 </span>
               </button>
             </li>
-          ))}
+          )) : searched ? (
+            <li className="px-4 py-3 text-sm text-ink-3">No players found — try a different spelling.</li>
+          ) : null}
         </ul>
       ) : null}
     </div>

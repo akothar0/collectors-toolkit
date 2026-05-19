@@ -247,7 +247,7 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
           <div>
             <Eyebrow className="mb-2">Grade profitability</Eyebrow>
             <p className="font-serif italic text-[24px] leading-none text-ink">
-              Pull PSA 8, 9, and 10 outcomes from one cached CardSight record.
+              See how much you could make submitting this card for a PSA grade.
             </p>
           </div>
 

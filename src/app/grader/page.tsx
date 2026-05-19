@@ -13,7 +13,7 @@ import type { GradeResult as GradeResultData } from '@/lib/grader';
 // ── Loading steps ─────────────────────────────────────────────────────────
 const LOADING_STEPS = [
   'UPLOADING PHOTOS',
-  'ANALYSING WITH GPT-4o',
+  'ANALYZING WITH GPT-4o',
   'CALCULATING GRADES',
 ];
 
@@ -178,7 +178,7 @@ function SummaryPanel({
 
       <Rule />
 
-      <p className="font-mono text-[10px] text-ink-3 leading-5">
+      <p className="font-mono text-[11px] text-ink-3 leading-5">
         AI estimate only — not a professional grade.
       </p>
     </div>

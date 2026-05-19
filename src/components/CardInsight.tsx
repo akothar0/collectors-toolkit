@@ -20,6 +20,7 @@ type CardInsightProps = {
 export function CardInsight(props: CardInsightProps) {
   const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +33,9 @@ export function CardInsight(props: CardInsightProps) {
       .then((data: { insight?: string } | null) => {
         if (!cancelled && data?.insight) setInsight(data.insight);
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!cancelled) setFetchError(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -42,7 +45,7 @@ export function CardInsight(props: CardInsightProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.player, props.year, props.setName, props.officialGrade]);
 
-  if (!loading && !insight) return null;
+  if (!loading && !insight && !fetchError) return null;
 
   return (
     <>
@@ -51,6 +54,8 @@ export function CardInsight(props: CardInsightProps) {
         <Eyebrow>Card intel</Eyebrow>
         {loading ? (
           <InsightLoadingSkeleton />
+        ) : fetchError ? (
+          <p className="text-[13px] text-ink-2">Intel unavailable.</p>
         ) : (
           <p className="text-[13px] leading-relaxed text-ink-2">{insight}</p>
         )}

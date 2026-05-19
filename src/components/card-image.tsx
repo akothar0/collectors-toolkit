@@ -28,7 +28,7 @@ export function CardImage({
   if (!src?.trim()) {
     return (
       <div
-        className={`flex items-center justify-center bg-ink-800 text-xs text-ash-500 ${className ?? ''}`}
+        className={`flex items-center justify-center bg-surface-2 text-xs text-ink-3 ${className ?? ''}`}
       >
         No image
       </div>

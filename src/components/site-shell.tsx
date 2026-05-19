@@ -16,7 +16,7 @@
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import {
   ChartColumnIncreasing, Camera, ChevronDown, Heart, Home, LibraryBig,
-  Layers, ScanLine, Gauge, Plus, Import as ImportIcon, Menu, Search, X,
+  Layers, ScanLine, Gauge, Plus, Import as ImportIcon, Menu, X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -185,11 +185,6 @@ export function SiteShell({ children, authReady }: { children: ReactNode; authRe
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-md border border-rule px-2.5 py-1.5 font-mono text-[11px] text-ink-3 md:flex">
-              <Search className="h-3 w-3"/>
-              <span>Search collection</span>
-              <span className="ml-6">⌘K</span>
-            </div>
             <CaptureMenu/>
             {authReady ? (
               <>

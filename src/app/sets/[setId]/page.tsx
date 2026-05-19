@@ -167,7 +167,7 @@ export default function SetDetailPage() {
           <Rule className="mb-5" />
           <Eyebrow className="mb-3">Still hunting</Eyebrow>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {missingSlots.slice(0, 18).map(slot => {
+            {missingSlots.slice(0, 36).map(slot => {
               const query = new URLSearchParams({ _nkw: `${data.set.name} #${slot.number}`, LH_Sold: '1', LH_Complete: '1' });
               return (
                 <div key={slot.number} className="flex items-center justify-between gap-3 rounded border border-rule px-3 py-2">
@@ -180,8 +180,8 @@ export default function SetDetailPage() {
               );
             })}
           </div>
-          {missingSlots.length > 18 && (
-            <p className="mt-3 font-mono text-[10px] text-ink-3">+{missingSlots.length - 18} more needed</p>
+          {missingSlots.length > 36 && (
+            <p className="mt-3 font-mono text-[10px] text-ink-3">+{missingSlots.length - 36} more — switch to &ldquo;Missing only&rdquo; view to see all</p>
           )}
         </div>
       )}

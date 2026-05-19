@@ -8,6 +8,7 @@
 import type { Metadata } from 'next';
 import { Instrument_Serif, Geist, Geist_Mono } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from 'sonner';
 import { SiteShell } from '@/components/site-shell';
 import './globals.css';
 
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ) : (
           <SiteShell authReady={false}>{children}</SiteShell>
         )}
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

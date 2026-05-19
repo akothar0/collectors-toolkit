@@ -80,7 +80,7 @@ export function ImageUpload({
                   event.stopPropagation();
                   clearSelection();
                 }}
-                className="relative z-20 inline-flex items-center gap-2 rounded border border-ink-600 px-3 py-1.5 text-sm font-medium text-ash-300 hover:border-ink-500 hover:text-ash-50"
+                className="relative z-20 inline-flex items-center gap-2 rounded border border-white/20 px-3 py-1.5 text-sm font-medium text-white/60 hover:border-white/40 hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
                 Remove

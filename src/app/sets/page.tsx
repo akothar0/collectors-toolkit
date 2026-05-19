@@ -101,7 +101,7 @@ export default function SetsPage() {
         </div>
       ) : sets.length === 0 ? (
         <div className="py-24 text-center">
-          <p className="font-serif italic text-[32px] text-ink-2">No sets tracked yet.</p>
+          <p className="font-serif italic text-[32px] text-ink-2">No sets yet.</p>
           <p className="mt-2 text-[14px] text-ink-3">Add a set to start checking off card numbers.</p>
           <button type="button" onClick={() => setModalOpen(true)}
             className="mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90">

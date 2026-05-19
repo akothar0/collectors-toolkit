@@ -232,7 +232,7 @@ function ImportPageInner() {
                   </div>
                   {bookmarkletPortMismatch && (
                     <p className="rounded border border-warn/30 bg-warn/5 px-3 py-2 font-mono text-[11px] text-warn">
-                      Re-copy the bookmarklet from this page ({window.location.origin}). An older copy may point at {bookmarkletAppUrl}.
+                      Use the &ldquo;Copy bookmarklet&rdquo; button on this page — your saved bookmark may point to a different address.
                     </p>
                   )}
                 </>

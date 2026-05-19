@@ -31,9 +31,9 @@ export function CompRangeBar({ min, median, max, compact }: CompRangeBarProps) {
   return (
     <div className="space-y-2">
       <div className={`flex justify-between font-mono text-ink-3 ${textSize}`}>
-        <span>LO {formatPrice(min)}</span>
+        <span>LOW {formatPrice(min)}</span>
         <span className="text-ink">MEDIAN {formatPrice(median)}</span>
-        <span>HI {formatPrice(max)}</span>
+        <span>HIGH {formatPrice(max)}</span>
       </div>
       <div className={`relative w-full rounded-full bg-rule-soft ${trackHeight}`}>
           <RangeMarker medianPct={medianPct} />

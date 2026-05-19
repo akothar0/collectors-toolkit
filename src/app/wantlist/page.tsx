@@ -9,6 +9,7 @@ import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
 import type { PricingPanelData } from '@/lib/pricing/presenter';
 import { buildWantListAddUrl, type WantListItem } from '@/lib/wantlist';
 import { formatDateLabel, formatPrice } from '@/lib/collection-presenter';
+import { toast } from 'sonner';
 import { readJsonResponse } from '@/lib/http-json';
 
 function buildEbaySoldCompsUrl(description: string) {
@@ -180,6 +181,7 @@ export default function WantListPage() {
       }
       setItems((current) => current.filter((entry) => entry.id !== item.id));
       setFulfillPrompt(item);
+      toast.success('Marked as found.');
     } catch (foundError) {
       setError(foundError instanceof Error ? foundError.message : 'Unable to mark as found.');
     }
@@ -193,7 +195,7 @@ export default function WantListPage() {
           <h1 className="mt-1 font-serif italic text-[48px] leading-none tracking-tight text-ink">
             {loading ? '…' : items.length > 0
               ? <>{items.length} card{items.length !== 1 ? 's' : ''} <span className="text-accent">worth watching.</span></>
-              : 'Nothing on your list.'}
+              : 'Your want list is empty.'}
           </h1>
         </div>
       </div>
@@ -210,7 +212,7 @@ export default function WantListPage() {
         ) : items.length === 0 ? (
           <div className="rounded border border-dashed border-rule bg-surface px-8 py-16 text-center">
             <Heart className="mx-auto h-12 w-12 text-ink-2" />
-            <p className="mt-4 text-lg font-medium text-ink">Nothing on your list.</p>
+            <p className="mt-4 text-lg font-medium text-ink">Your want list is empty.</p>
             <p className="mt-2 text-sm text-ink-2">Add cards you&apos;re hunting — track prices and mark them found.</p>
           </div>
         ) : (
@@ -227,7 +229,7 @@ export default function WantListPage() {
                     : 'border-rule text-ink-2 hover:bg-surface-2'
                 }`}
               >
-                {key === 'all' ? 'All' : key === 'no_comps' ? 'No comps' : key}
+                {{ all: 'All', under: 'Below target', over: 'Above target', no_comps: 'No comps' }[key]}
               </button>
             ))}
           </div>

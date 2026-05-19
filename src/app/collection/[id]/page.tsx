@@ -16,6 +16,7 @@ import { MarketCompsSection } from '@/components/pricing/MarketCompsSection';
 import { PriceHistorySparkline } from '@/components/pricing/PriceHistorySparkline';
 import { GradeProfitabilitySection } from '@/components/pricing/GradeProfitabilitySection';
 import { getCertUrl } from '@/lib/cert-number';
+import { toast } from 'sonner';
 import { readJsonResponse } from '@/lib/http-json';
 
 const SPORT_TINTS: Record<string, string> = {
@@ -86,6 +87,7 @@ export default function CollectionCardDetailPage() {
       const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? 'Unable to update value.');
       setCard(data); setValueEditing(false);
+      toast.success('Value updated.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update value.'); }
     finally { setValueSaving(false); }
   }
@@ -139,6 +141,7 @@ export default function CollectionCardDetailPage() {
       const res = await fetch(`/api/collection/${card.id}`, { method: 'DELETE' });
       const data = await readJsonResponse<{ success?: boolean; error?: string }>(res);
       if (!res.ok) throw new Error(data.error ?? 'Unable to delete card.');
+      toast.success('Card deleted.');
       router.push('/collection');
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete card.'); setDeleteLoading(false); }
   }

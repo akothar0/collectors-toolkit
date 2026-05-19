@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
 import { CardInsight } from '@/components/CardInsight';
 import { Eyebrow, Rule } from '@/components/editorial';
+import { toast } from 'sonner';
 import { readJsonResponse } from '@/lib/http-json';
 import { getCertUrl } from '@/lib/cert-number';
 import {
@@ -148,6 +149,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
       setResult({ ...result, savedToCollection: true, collectionCardId: json.collectionCardId ?? result.collectionCardId });
       setSaveSuccess('Saved to your collection.');
       setSaveOverlayOpen(false);
+      toast.success('Saved to collection.');
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to save.');
     } finally {
@@ -167,12 +169,6 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
               : `Confirm your ${getGraderLabel(result.gradingCompany ?? result.ocrGradingCompany)} cert number`}
           </p>
         </div>
-        {onTryAgain && (
-          <button type="button" onClick={onTryAgain}
-            className="font-mono text-[11px] text-ink-3 hover:text-ink">
-            Scan another →
-          </button>
-        )}
       </div>
 
       {/* Main grid */}
