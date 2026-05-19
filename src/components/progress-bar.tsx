@@ -12,17 +12,17 @@ export function ProgressBar({
   return (
     <div className="space-y-2">
       {label ? (
-        <div className="flex items-center justify-between text-sm text-slate-600">
+        <div className="flex items-center justify-between text-sm text-ash-400">
           <span>{label}</span>
-          <span className="font-medium text-slate-950">
+          <span className="tabular-nums font-medium text-ash-200">
             {value}/{max} ({percent}%)
           </span>
         </div>
       ) : null}
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
         <div
-          className="h-full rounded-full bg-brand-600 transition-all"
-          style={{ width: `${percent}%` }}
+          className="h-full rounded-full bg-brand-500"
+          style={{ width: `${percent}%`, transition: 'width 300ms ease-out' }}
         />
       </div>
     </div>

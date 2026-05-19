@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -11,17 +11,38 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-950 antialiased;
-  background-image:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 30%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 22%);
+  @apply bg-ink-950 text-ash-50 antialiased;
+}
+
+/* Motion system — 150ms color transitions everywhere */
+*, *::before, *::after {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 a {
   @apply transition-colors;
 }
 
-::selection {
-  background: rgba(79, 70, 229, 0.16);
+/* Keyboard focus ring */
+:focus-visible {
+  outline: 2px solid theme('colors.brand.500');
+  outline-offset: 2px;
 }
 
+/* Skeleton shimmer for dark backgrounds */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1c1c1c 25%, #282828 50%, #1c1c1c 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+::selection {
+  background: rgba(255, 85, 0, 0.2);
+}

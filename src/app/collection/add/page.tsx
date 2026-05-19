@@ -256,30 +256,30 @@ function AddCardForm() {
 
   if (saved) {
     return (
-      <section className="mx-auto max-w-lg space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-soft">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+      <section className="mx-auto max-w-lg space-y-6 rounded border border-ink-700 bg-ink-900 p-8 text-center ">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded bg-emerald-950 text-emerald-400">
           <Check className="h-8 w-8" />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Added!</h1>
-        <p className="text-sm text-slate-600">Your card was saved to your collection.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ash-50">Added!</h1>
+        <p className="text-sm text-ash-300">Your card was saved to your collection.</p>
         <div className="flex flex-col gap-3 pt-2">
           <button
             type="button"
             onClick={resetForAnother}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            className="inline-flex w-full items-center justify-center gap-2 rounded bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-400"
           >
             <Plus className="h-4 w-4" />
             Add Another Card
           </button>
           <Link
             href="/collection"
-            className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex w-full items-center justify-center rounded border border-ink-700 px-6 py-3 text-sm font-medium text-ash-200 hover:bg-ink-800"
           >
             View Collection
           </Link>
         </div>
         {savedCardId ? (
-          <p className="text-xs text-slate-400">Saved as {savedCardId.slice(0, 8)}…</p>
+          <p className="text-xs text-ash-500">Saved as {savedCardId.slice(0, 8)}…</p>
         ) : null}
       </section>
     );
@@ -288,16 +288,16 @@ function AddCardForm() {
   return (
     <section className="mx-auto max-w-2xl space-y-8">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Collection</p>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-slate-950">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-500">Collection</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
           Add Card
         </h1>
-        <p className="text-slate-600">Add a card in under 30 seconds — only player name is required.</p>
+        <p className="text-ash-300">Add a card in under 30 seconds — only player name is required.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft md:p-8">
+      <form onSubmit={handleSubmit} className="space-y-8 rounded border border-ink-700 bg-ink-900 p-6  md:p-8">
         <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">
             Card identity
           </legend>
           <PlayerAutocomplete
@@ -310,7 +310,7 @@ function AddCardForm() {
             required
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Year
               <input
                 type="number"
@@ -318,7 +318,7 @@ function AddCardForm() {
                 max={2030}
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
             <div>
@@ -332,48 +332,48 @@ function AddCardForm() {
           </div>
         </fieldset>
 
-        <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+        <details className="rounded border border-ink-700 bg-ink-800/50 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-ash-200">
             Set details (optional)
           </summary>
           <div className="mt-4 space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Set name
               <input
                 type="text"
                 value={setName}
                 onChange={(e) => setSetName(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-ash-200">
                 Card number
                 <input
                   type="text"
                   value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)}
                   placeholder='e.g. "247"'
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
                 />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-ash-200">
                 Parallel
                 <input
                   type="text"
                   value={parallel}
                   onChange={(e) => setParallel(e.target.value)}
                   placeholder="Gold Refractor"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
                 />
               </label>
             </div>
             <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="flex items-center gap-2 text-sm text-ash-200">
                 <input type="checkbox" checked={isRookie} onChange={(e) => setIsRookie(e.target.checked)} />
                 Rookie card
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="flex items-center gap-2 text-sm text-ash-200">
                 <input type="checkbox" checked={isAutograph} onChange={(e) => setIsAutograph(e.target.checked)} />
                 Autograph
               </label>
@@ -382,7 +382,7 @@ function AddCardForm() {
         </details>
 
         <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">
             Condition
           </legend>
           <ButtonGroup
@@ -394,7 +394,7 @@ function AddCardForm() {
             onChange={(value) => setConditionType(value as 'raw' | 'graded')}
           />
           {conditionType === 'graded' ? (
-            <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+            <div className="space-y-4 rounded border border-ink-700 bg-ink-800/50 p-4">
               <ButtonGroup
                 label="Grading company"
                 options={GRADING_COMPANIES}
@@ -407,49 +407,49 @@ function AddCardForm() {
                   value={gradingCompanyOther}
                   onChange={(e) => setGradingCompanyOther(e.target.value)}
                   placeholder="Company name"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
                 />
               ) : null}
               <GradeChips value={grade} onChange={setGrade} />
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-ash-200">
                 Cert number (optional)
                 <input
                   type="text"
                   value={certNumber}
                   onChange={(e) => setCertNumber(e.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
                 />
               </label>
             </div>
           ) : null}
         </fieldset>
 
-        <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+        <details className="rounded border border-ink-700 bg-ink-800/50 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-ash-200">
             Purchase info (optional)
           </summary>
           <div className="mt-4 space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Purchase price
               <div className="relative mt-2">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ash-500">$</span>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
                   value={purchasePrice}
                   onChange={(e) => setPurchasePrice(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-8 pr-4 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded border border-ink-700 bg-ink-900 py-3 pl-8 pr-4 text-sm outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
                 />
               </div>
             </label>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Date purchased
               <input
                 type="date"
                 value={purchaseDate}
                 onChange={(e) => setPurchaseDate(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
             <ButtonGroup
@@ -461,20 +461,20 @@ function AddCardForm() {
               value={purchaseSource}
               onChange={setPurchaseSource}
             />
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Original listing URL
               <input
                 type="url"
                 value={purchaseUrl}
                 onChange={(e) => setPurchaseUrl(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
           </div>
         </details>
 
         <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">
             Photos (optional)
           </legend>
           <CollectionPhotoPicker
@@ -504,29 +504,29 @@ function AddCardForm() {
           />
         </fieldset>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-ash-200">
           Notes (optional)
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+            className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
           />
         </label>
 
-        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+        {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Add to Collection
         </button>
       </form>
 
-      <Link href="/collection" className="text-sm font-medium text-brand-600 hover:underline">
+      <Link href="/collection" className="text-sm font-medium text-brand-500 hover:underline">
         Back to collection
       </Link>
     </section>
@@ -535,7 +535,7 @@ function AddCardForm() {
 
 export default function AddCardPage() {
   return (
-    <Suspense fallback={<p className="text-slate-600">Loading form...</p>}>
+    <Suspense fallback={<p className="text-ash-300">Loading form...</p>}>
       <AddCardForm />
     </Suspense>
   );

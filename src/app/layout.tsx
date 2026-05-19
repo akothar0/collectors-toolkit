@@ -1,17 +1,13 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
-import { Manrope, Space_Grotesk } from 'next/font/google';
+import { Space_Grotesk } from 'next/font/google';
 import { SiteShell } from '@/components/site-shell';
 import type { ReactNode } from 'react';
 import './globals.css';
 
-const bodyFont = Manrope({
-  subsets: ['latin'],
-  variable: '--font-body',
-});
-
 const displayFont = Space_Grotesk({
   subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-display',
 });
 
@@ -28,8 +24,8 @@ export default function RootLayout({
   const clerkReady = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim());
 
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
-      <body className="font-[family-name:var(--font-body)]">
+    <html lang="en" className={displayFont.variable}>
+      <body className="font-sans">
         {clerkReady ? (
           <ClerkProvider>
             <SiteShell authReady>{children}</SiteShell>

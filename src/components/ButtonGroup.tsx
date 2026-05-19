@@ -31,7 +31,7 @@ export function ButtonGroup<T extends string>({
   return (
     <div className={`space-y-2 ${className}`}>
       {label ? (
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">{label}</p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {normalized.map((option) => {
@@ -41,10 +41,10 @@ export function ButtonGroup<T extends string>({
               key={option.value}
               type="button"
               onClick={() => onChange(option.value)}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded border px-3 py-1.5 text-sm font-medium ${
                 active
-                  ? 'border-brand-500 bg-brand-600 text-white'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-brand-500/50 bg-brand-900/30 text-brand-400'
+                  : 'border-ink-600 bg-ink-800 text-ash-300 hover:border-ink-500 hover:text-ash-50'
               }`}
             >
               {option.label}

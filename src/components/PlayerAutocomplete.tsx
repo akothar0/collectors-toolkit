@@ -37,9 +37,7 @@ export function PlayerAutocomplete({
         const response = await fetch(`/api/cards/search?q=${encodeURIComponent(value.trim())}`, {
           signal: controller.signal,
         });
-        if (!response.ok) {
-          return;
-        }
+        if (!response.ok) return;
         const data = (await response.json()) as { results?: CardSearchResult[] };
         setSuggestions(data.results ?? []);
         setOpen((data.results ?? []).length > 0);
@@ -62,15 +60,14 @@ export function PlayerAutocomplete({
         setOpen(false);
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="block text-sm font-medium text-slate-700">
-        Player name {required ? <span className="text-rose-500">*</span> : null}
+      <label className="block text-xs font-medium uppercase tracking-[0.18em] text-ash-500">
+        Player name {required ? <span className="text-rose-400">*</span> : null}
       </label>
       <input
         type="text"
@@ -78,32 +75,28 @@ export function PlayerAutocomplete({
         required={required}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        onFocus={() => {
-          if (suggestions.length > 0) {
-            setOpen(true);
-          }
-        }}
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-brand-500 transition focus:border-brand-400 focus:ring-2"
+        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+        className="mt-2 h-11 w-full rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
         autoComplete="off"
       />
       {loading ? (
-        <p className="mt-1 text-xs text-slate-400">Searching catalog...</p>
+        <p className="mt-1 text-xs text-ash-500">Searching…</p>
       ) : null}
       {open && suggestions.length > 0 ? (
-        <ul className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-soft">
+        <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded border border-ink-700 bg-ink-900 py-1">
           {suggestions.map((card) => (
             <li key={card.id}>
               <button
                 type="button"
-                className="flex w-full flex-col px-4 py-2 text-left text-sm hover:bg-slate-50"
+                className="flex w-full flex-col px-4 py-2.5 text-left hover:bg-ink-800"
                 onClick={() => {
                   onChange(card.player);
                   onSelectCard?.(card);
                   setOpen(false);
                 }}
               >
-                <span className="font-medium text-slate-900">{card.player}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-sm font-medium text-ash-50">{card.player}</span>
+                <span className="text-xs text-ash-500">
                   {[card.year, card.set_name].filter(Boolean).join(' · ') || 'Catalog match'}
                 </span>
               </button>

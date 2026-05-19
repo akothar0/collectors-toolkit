@@ -12,10 +12,10 @@ async function SuccessContent({ searchParams }: { searchParams: Promise<{ count?
           ✓
         </div>
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950">
+          <h1 className="text-3xl font-semibold tracking-tight text-ash-50">
             {saved} {saved === 1 ? 'card' : 'cards'} added
           </h1>
-          <p className="mt-3 text-base text-slate-500">
+          <p className="mt-3 text-base text-ash-400">
             {saved > 0
               ? 'Your import is complete. The cards are now in your collection.'
               : 'No cards were saved — all rows were deselected or could not be matched.'}
@@ -24,13 +24,13 @@ async function SuccessContent({ searchParams }: { searchParams: Promise<{ count?
         <div className="flex justify-center gap-3">
           <Link
             href="/collection"
-            className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            className="rounded bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-400"
           >
             View Collection
           </Link>
           <Link
             href="/import"
-            className="rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            className="rounded border border-ink-700 bg-ink-900 px-6 py-2.5 text-sm font-semibold text-ash-200 transition-colors hover:bg-ink-800"
           >
             Import More
           </Link>
@@ -42,7 +42,7 @@ async function SuccessContent({ searchParams }: { searchParams: Promise<{ count?
 
 export default function SuccessPage({ searchParams }: { searchParams: Promise<{ count?: string }> }) {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading…</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-ash-400">Loading…</div>}>
       <SuccessContent searchParams={searchParams} />
     </Suspense>
   );

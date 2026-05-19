@@ -13,7 +13,7 @@ export function GradeChips({ value, onChange }: GradeChipsProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Grade</p>
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Grade</p>
       <div className="flex flex-wrap gap-2">
         {prominent.map((grade) => (
           <GradeChip key={grade} grade={grade} active={value === grade} onChange={onChange} prominent />
@@ -45,12 +45,12 @@ function GradeChip({
     <button
       type="button"
       onClick={() => onChange(grade)}
-      className={`rounded-full border px-3 py-1.5 font-medium transition-colors ${
-        prominent ? 'text-base' : 'text-sm'
+      className={`tabular-nums rounded border font-semibold ${
+        prominent ? 'px-4 py-2 text-base' : 'px-3 py-1.5 text-sm'
       } ${
         active
-          ? 'border-brand-500 bg-brand-600 text-white'
-          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+          ? 'border-brand-500/50 bg-brand-900/30 text-brand-400'
+          : 'border-ink-600 bg-ink-800 text-ash-300 hover:border-ink-500 hover:text-ash-50'
       }`}
     >
       {label}
