@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import type { ImportBatch, ImportBatchItem } from '@/lib/import/types';
 
 type EditableItem = ImportBatchItem & {
@@ -157,63 +158,101 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
         <span className="ml-auto text-sm text-slate-500">{selectedCount} selected</span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-soft">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-              <th className="w-8 px-4 py-3" />
-              <th className="px-4 py-3">Card Title</th>
-              <th className="px-4 py-3">Player</th>
-              <th className="px-4 py-3">Year</th>
-              <th className="px-4 py-3">Set</th>
-              <th className="px-4 py-3">Grade</th>
-              <th className="px-4 py-3">Co.</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Conf.</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {items.map((item) => (
-              <tr key={item.id} className={`transition-colors ${item.selected ? '' : 'opacity-40'}`}>
-                <td className="px-4 py-3">
+      {/* Review list */}
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
+        <div className="hidden border-b border-slate-100 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 md:grid md:grid-cols-[28px,minmax(0,1.7fr),repeat(6,minmax(0,1fr)),74px] md:gap-3">
+          <div />
+          <div>Card title</div>
+          <div>Player</div>
+          <div>Year</div>
+          <div>Set</div>
+          <div>Grade</div>
+          <div>Co.</div>
+          <div>Price</div>
+          <div>Conf.</div>
+        </div>
+
+        <div className="divide-y divide-slate-50">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={`px-4 py-5 transition-opacity md:px-6 ${item.selected ? '' : 'opacity-40'}`}
+            >
+              <div className="grid gap-4 md:grid-cols-[28px,minmax(0,1fr),auto] md:items-start">
+                <div className="pt-1">
                   <input
                     type="checkbox"
                     checked={item.selected}
                     onChange={(e) => updateItem(item.id, 'selected', e.target.checked)}
                     className="h-4 w-4 rounded accent-brand-600"
                   />
-                </td>
-                <td className="max-w-[240px] px-4 py-3">
-                  <p className="truncate text-xs text-slate-500" title={item.rawTitle}>{item.rawTitle}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <InlineInput value={item.editedPlayer} onChange={(v) => updateItem(item.id, 'editedPlayer', v)} placeholder={item.parsedPlayer ?? '—'} />
-                </td>
-                <td className="w-20 px-4 py-3">
-                  <InlineInput value={item.editedYear} onChange={(v) => updateItem(item.id, 'editedYear', v)} placeholder={item.parsedYear != null ? String(item.parsedYear) : '—'} />
-                </td>
-                <td className="px-4 py-3">
-                  <InlineInput value={item.editedSet} onChange={(v) => updateItem(item.id, 'editedSet', v)} placeholder={item.parsedSet ?? '—'} />
-                </td>
-                <td className="w-16 px-4 py-3">
-                  <InlineInput value={item.editedGrade} onChange={(v) => updateItem(item.id, 'editedGrade', v)} placeholder={item.parsedGrade != null ? String(item.parsedGrade) : '—'} />
-                </td>
-                <td className="w-16 px-4 py-3">
-                  <InlineInput value={item.editedCompany} onChange={(v) => updateItem(item.id, 'editedCompany', v)} placeholder={item.parsedCompany ?? '—'} />
-                </td>
-                <td className="w-20 px-4 py-3">
-                  <InlineInput value={item.editedPrice} onChange={(v) => updateItem(item.id, 'editedPrice', v)} placeholder={item.rawPrice != null ? `$${item.rawPrice}` : '—'} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${confidenceBadge(item.parseConfidence)}`}>
-                    {item.parseConfidence}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+
+                <div className="min-w-0 space-y-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className="max-w-full text-sm font-medium leading-6 text-slate-950"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 2,
+                          overflow: 'hidden',
+                        }}
+                        title={item.rawTitle}
+                      >
+                        {item.rawTitle}
+                      </p>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${confidenceBadge(item.parseConfidence)}`}>
+                        {item.parseConfidence}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      {item.rawPrice != null ? <MetaChip label={`$${item.rawPrice}`} /> : null}
+                      {item.parsedPlayer ? <MetaChip label={item.parsedPlayer} /> : null}
+                      {item.parsedYear != null ? <MetaChip label={String(item.parsedYear)} /> : null}
+                      {item.parsedSet ? <MetaChip label={item.parsedSet} /> : null}
+                      {item.parsedGrade != null ? <MetaChip label={`Grade ${item.parsedGrade}`} /> : null}
+                      {item.parsedCompany ? <MetaChip label={item.parsedCompany} /> : null}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                    <Field label="Player">
+                      <InlineInput value={item.editedPlayer} onChange={(v) => updateItem(item.id, 'editedPlayer', v)} placeholder={item.parsedPlayer ?? '—'} />
+                    </Field>
+                    <Field label="Year">
+                      <InlineInput value={item.editedYear} onChange={(v) => updateItem(item.id, 'editedYear', v)} placeholder={item.parsedYear != null ? String(item.parsedYear) : '—'} />
+                    </Field>
+                    <Field label="Set" className="xl:col-span-2">
+                      <InlineInput value={item.editedSet} onChange={(v) => updateItem(item.id, 'editedSet', v)} placeholder={item.parsedSet ?? '—'} />
+                    </Field>
+                    <Field label="Grade">
+                      <InlineInput value={item.editedGrade} onChange={(v) => updateItem(item.id, 'editedGrade', v)} placeholder={item.parsedGrade != null ? String(item.parsedGrade) : '—'} />
+                    </Field>
+                    <Field label="Co.">
+                      <InlineInput value={item.editedCompany} onChange={(v) => updateItem(item.id, 'editedCompany', v)} placeholder={item.parsedCompany ?? '—'} />
+                    </Field>
+                    <Field label="Price">
+                      <InlineInput value={item.editedPrice} onChange={(v) => updateItem(item.id, 'editedPrice', v)} placeholder={item.rawPrice != null ? `$${item.rawPrice}` : '—'} />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="hidden md:flex md:pt-1">
+                  <button
+                    type="button"
+                    onClick={() => updateItem(item.id, 'selected', !item.selected)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    {item.selected ? 'Selected' : 'Skipped'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Save bar */}
@@ -241,5 +280,30 @@ function InlineInput({ value, onChange, placeholder }: { value: string; onChange
       placeholder={placeholder}
       className="w-full min-w-[60px] cursor-text rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-200"
     />
+  );
+}
+
+function Field({
+  label,
+  children,
+  className = '',
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={`space-y-1.5 ${className}`}>
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function MetaChip({ label }: { label: string }) {
+  return (
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+      {label}
+    </span>
   );
 }
