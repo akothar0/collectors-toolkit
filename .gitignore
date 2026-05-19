@@ -6,6 +6,7 @@ tsconfig.tsbuildinfo
 *.log
 .playwright-mcp
 ct-home.png
+import-review-page.png
 
 
 # clerk configuration (can include secrets)
