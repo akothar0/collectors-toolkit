@@ -1,4 +1,5 @@
 import { normalizeCertNumber } from '@/lib/cert-number';
+import { parsePsaBrand } from '@/lib/cert-lookup/psa-brand';
 
 type PsaRawCert = Record<string, unknown>;
 
@@ -8,6 +9,7 @@ export type PSALookupResult = {
   player: string;
   year: number;
   manufacturer: string;
+  setName: string | null;
   sport: string;
   cardNumber: string;
   parallel: string | null;
@@ -155,7 +157,10 @@ export function normalizePSACertBody(certNumber: string, body: unknown): PSALook
   const gradeInfo = normalizeGrade(cert.CardGrade ?? cert.cardGrade);
   const player = asString(cert.Subject ?? cert.subject);
   const year = asInteger(cert.Year ?? cert.year);
-  const manufacturer = asString(cert.Brand ?? cert.brand);
+  const brandRaw = asString(cert.Brand ?? cert.brand);
+  const { manufacturer: parsedManufacturer, setName: parsedSetName } = parsePsaBrand(brandRaw);
+  const manufacturer = parsedManufacturer ?? brandRaw;
+  const setName = parsedSetName ?? brandRaw;
   const sport = asString(cert.Category ?? cert.category);
   const cardNumber = asString(cert.CardNumber ?? cert.cardNumber);
   const psaSpecId = asString(cert.SpecID ?? cert.specId ?? cert.SpecId);
@@ -186,6 +191,7 @@ export function normalizePSACertBody(certNumber: string, body: unknown): PSALook
     player,
     year,
     manufacturer,
+    setName,
     sport,
     cardNumber,
     parallel: asString(cert.Variety ?? cert.variety),

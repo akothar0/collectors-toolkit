@@ -6,7 +6,7 @@ export function psaResultToCertLookup(result: PSALookupResult): CertLookupResult
     certNumber: result.certNumber,
     player: result.player,
     year: result.year,
-    setName: result.manufacturer,
+    setName: result.setName ?? result.manufacturer,
     cardNumber: result.cardNumber,
     parallel: result.parallel,
     grade: result.grade,

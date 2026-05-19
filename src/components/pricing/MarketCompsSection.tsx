@@ -33,10 +33,13 @@ function pricingEndpoint(
   explore?: ExploreFilters
 ) {
   const params = new URLSearchParams();
-  if (force) params.set('force', '1');
-  if (explore?.gradingCompany) params.set('gradingCompany', explore.gradingCompany);
-  if (explore?.grade) params.set('grade', explore.grade);
-  if (explore?.parallelId) params.set('parallelId', explore.parallelId);
+  if (force) {
+    params.set('force', '1');
+  } else if (explore) {
+    params.set('gradingCompany', explore.gradingCompany || '');
+    params.set('grade', explore.grade || '');
+    params.set('parallelId', explore.parallelId || '');
+  }
   const qs = params.toString() ? `?${params.toString()}` : '';
 
   if (props.wantListId) {
@@ -76,6 +79,7 @@ export function MarketCompsSection({
   const [data, setData] = useState<PricingPanelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [error, setError] = useState('');
   const [explore, setExplore] = useState<ExploreFilters>({
     gradingCompany: slabDefaults?.gradingCompany ?? '',
@@ -91,7 +95,7 @@ export function MarketCompsSection({
   const loadPricing = useCallback(
     async (force = false, filters?: ExploreFilters) => {
       setError('');
-      const endpoint = pricingEndpoint({ collectionCardId, wantListId }, force, force ? undefined : filters);
+      const endpoint = pricingEndpoint({ collectionCardId, wantListId }, force, filters);
       if (!endpoint) return null;
 
       const response = await fetch(endpoint);
@@ -145,10 +149,20 @@ export function MarketCompsSection({
     setRefreshing(true);
     setError('');
     try {
-      const payload = await loadPricing(true);
-      if (payload?.status === 'refreshed' && payload.valuationEligible) {
-        onPricingUpdated?.();
+      const refreshEndpoint = pricingEndpoint({ collectionCardId, wantListId }, true);
+      if (refreshEndpoint) {
+        const refreshResponse = await fetch(refreshEndpoint);
+        const refreshPayload = await readJsonResponse<PricingPanelData & { error?: string }>(
+          refreshResponse
+        );
+        if (!refreshResponse.ok) {
+          throw new Error(refreshPayload.error ?? 'Unable to refresh market pricing.');
+        }
+        if (refreshPayload.status === 'refreshed' && refreshPayload.valuationEligible) {
+          onPricingUpdated?.();
+        }
       }
+      await loadPricing(false, explore);
     } catch (refreshError) {
       setError(
         refreshError instanceof Error ? refreshError.message : 'Unable to refresh market pricing.'
@@ -161,7 +175,8 @@ export function MarketCompsSection({
   function handleExploreChange(patch: Partial<ExploreFilters>) {
     const next = { ...explore, ...patch };
     setExplore(next);
-    void loadPricing(false, next);
+    setFilterLoading(true);
+    void loadPricing(false, next).finally(() => setFilterLoading(false));
   }
 
   function handleResetSlab() {
@@ -173,10 +188,11 @@ export function MarketCompsSection({
           : data?.slabDefaults?.grade != null
             ? String(data.slabDefaults.grade)
             : '',
-      parallelId: '',
+      parallelId: data?.slabDefaults?.parallelId ?? '',
     };
     setExplore(reset);
-    void loadPricing(false, reset);
+    setFilterLoading(true);
+    void loadPricing(false, reset).finally(() => setFilterLoading(false));
   }
 
   if (loading) {
@@ -262,6 +278,10 @@ export function MarketCompsSection({
 
       {data.compsScopeNote ? (
         <p className="font-mono text-[10px] text-ink-3">{data.compsScopeNote}</p>
+      ) : null}
+
+      {filterLoading ? (
+        <p className="font-mono text-[10px] text-ink-3">Updating comps…</p>
       ) : null}
 
       {exploreEnabled && data.filterOptions ? (

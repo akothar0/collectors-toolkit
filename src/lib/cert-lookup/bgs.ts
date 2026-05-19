@@ -1,4 +1,5 @@
 import { normalizeCertNumber } from '@/lib/cert-number';
+import { parseBgsSetName } from '@/lib/cert-lookup/bgs-set-parse';
 import { scrapeHeaders } from '@/lib/cert-lookup/scrape-utils';
 import type { CertLookupResult, CertSubGrades } from '@/lib/cert-lookup/types';
 
@@ -66,7 +67,8 @@ export function parseBGSLookupJson(certNumber: string, body: unknown): CertLooku
   }
 
   const player = asText(payload.player_name);
-  const setName = asText(payload.set_name);
+  const rawSetName = asText(payload.set_name);
+  const { setName, parallel } = parseBgsSetName(rawSetName);
   const grade = asNumber(payload.final_grade);
 
   if (!player && !setName && grade === null) {
@@ -97,9 +99,9 @@ export function parseBGSLookupJson(certNumber: string, body: unknown): CertLooku
     certNumber: resolvedCert,
     player: player ?? 'Unknown',
     year: parseYearFromSetName(setName),
-    setName,
+    setName: setName ?? rawSetName,
     cardNumber: cardKey,
-    parallel: null,
+    parallel,
     grade,
     gradeDescription,
     autographGrade,
@@ -107,7 +109,7 @@ export function parseBGSLookupJson(certNumber: string, body: unknown): CertLooku
     popAtGrade: asNumber(payload.grade_pop_report) ?? asNumber(payload.pop_report),
     popHigher: asNumber(payload.pop_higher),
     sport: asText(payload.sport_name),
-    manufacturer: setName,
+    manufacturer: setName ?? rawSetName,
     source: 'beckett_scrape',
     raw: payload,
   };

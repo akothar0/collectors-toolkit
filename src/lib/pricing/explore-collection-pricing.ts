@@ -81,18 +81,21 @@ function mapExplorePayload(input: {
   };
 }
 
-function slabDefaultsFromRow(row: CollectionCardPricingRow): ExploreFilters {
+function slabDefaultsFromRow(
+  row: CollectionCardPricingRow,
+  resolvedParallelId: string | null
+): ExploreFilters {
   return {
     gradingCompany: row.grading_company,
     grade: row.grade != null ? Number(row.grade) : null,
-    parallelId: null,
+    parallelId: resolvedParallelId,
   };
 }
 
 export async function exploreCollectionCardPricing(
   collectionCardId: string,
   userId: string,
-  filters: ExploreFilters
+  filters: ParsedExploreFilters
 ): Promise<
   | { status: 'collection_not_found' }
   | { status: 'unsupported_sport' | 'incomplete_identity'; message: string }
@@ -136,9 +139,15 @@ export async function exploreCollectionCardPricing(
   }
 
   const isGraded = row.condition_type === 'graded';
-  const appliedCompany = filters.gradingCompany ?? row.grading_company;
-  const appliedGrade = filters.grade ?? (row.grade != null ? Number(row.grade) : null);
-  const parallelId = filters.parallelId ?? resolved.parallelId;
+  const appliedCompany = filters.gradingCompanyExplicit
+    ? filters.gradingCompany
+    : (filters.gradingCompany ?? row.grading_company);
+  const appliedGrade = filters.gradeExplicit
+    ? filters.grade
+    : (filters.grade ?? (row.grade != null ? Number(row.grade) : null));
+  const parallelId = filters.parallelExplicit
+    ? filters.parallelId
+    : (filters.parallelId ?? resolved.parallelId);
 
   let gradeId: string | null = null;
   if (isGraded && appliedCompany && appliedGrade != null) {
@@ -161,7 +170,7 @@ export async function exploreCollectionCardPricing(
   });
 
   const filterOptions = extractCacheFilterOptions(cache.pricing_response);
-  const slabDefaults = slabDefaultsFromRow(row);
+  const slabDefaults = slabDefaultsFromRow(row, resolved.parallelId);
 
   return {
     status: 'explore',
@@ -187,7 +196,13 @@ export function isExploreRequest(url: URL) {
   );
 }
 
-export function parseExploreFilters(url: URL): ExploreFilters {
+export type ParsedExploreFilters = ExploreFilters & {
+  parallelExplicit: boolean;
+  gradingCompanyExplicit: boolean;
+  gradeExplicit: boolean;
+};
+
+export function parseExploreFilters(url: URL): ParsedExploreFilters {
   const gradingCompany = url.searchParams.get('gradingCompany');
   const gradeRaw = url.searchParams.get('grade');
   const parallelId = url.searchParams.get('parallelId');
@@ -199,5 +214,8 @@ export function parseExploreFilters(url: URL): ExploreFilters {
         ? Number.parseFloat(gradeRaw)
         : null,
     parallelId: parallelId?.trim() || null,
+    parallelExplicit: url.searchParams.has('parallelId'),
+    gradingCompanyExplicit: url.searchParams.has('gradingCompany'),
+    gradeExplicit: url.searchParams.has('grade'),
   };
 }

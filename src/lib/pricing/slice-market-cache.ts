@@ -176,6 +176,36 @@ function pickDisplayTier(
   return { tier: 'all_conditions', result: fallback };
 }
 
+function filterByNumericGrade(
+  result: NormalizedPriceResult,
+  grade: number | null | undefined
+): NormalizedPriceResult {
+  if (grade == null || !Number.isFinite(grade)) {
+    return result;
+  }
+
+  const comparables = result.comparables.filter((row) => row.grade === grade);
+  const prices = comparables.map((c) => c.salePrice);
+  const sampleSize = prices.length;
+
+  return {
+    ...result,
+    sampleSize,
+    comparables,
+    medianSalePrice: sampleSize > 0 ? median(prices) : null,
+    avgSalePrice:
+      sampleSize > 0 ? prices.reduce((sum, value) => sum + value, 0) / sampleSize : null,
+    minSalePrice: sampleSize > 0 ? Math.min(...prices) : null,
+    maxSalePrice: sampleSize > 0 ? Math.max(...prices) : null,
+    latestSaleAt: comparables[0]?.saleDate ?? result.latestSaleAt,
+    confidenceLabel:
+      sampleSize >= 10 ? 'high' : sampleSize >= 3 ? 'medium' : sampleSize > 0 ? 'low' : 'none',
+    confidenceScore:
+      sampleSize >= 10 ? 0.9 : sampleSize >= 3 ? 0.7 : sampleSize > 0 ? 0.4 : 0,
+    valuationEligible: sampleSize >= 3,
+  };
+}
+
 function pickManualDisplayTier(
   pricingResponse: PricingResponse,
   input: SliceMarketCacheInput
@@ -187,7 +217,16 @@ function pickManualDisplayTier(
 
   const hasParallel = Boolean(input.parallelId);
   const tier: CompsTierId = hasParallel ? 'exact' : 'exact_grade_any_parallel';
-  const result = sliceTier(pricingResponse, tier, input);
+  let result = sliceTier(pricingResponse, tier, input);
+
+  if (!input.gradeId && input.grade != null) {
+    result = filterByNumericGrade(result, input.grade);
+  }
+
+  if (input.gradingCompany) {
+    result = filterByGradingCompany(result, input.gradingCompany);
+  }
+
   return { tier, result };
 }
 

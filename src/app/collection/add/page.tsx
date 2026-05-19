@@ -15,6 +15,7 @@ import {
   composeGraderPrefillNotes,
   type CardSearchResult,
   type GraderSessionPrefill,
+  type ScanPrefill,
 } from '@/lib/collection';
 import type { CollectionPhoto } from '@/lib/collection-photos';
 import {
@@ -31,6 +32,7 @@ function todayIsoDate() {
 function AddCardForm() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
+  const scanIdParam = searchParams.get('scan');
   const queryGrade = searchParams.get('grade') ?? undefined;
   const queryCompany = searchParams.get('company') ?? undefined;
   const queryPlayer = searchParams.get('player') ?? '';
@@ -61,6 +63,7 @@ function AddCardForm() {
   const [purchaseSource, setPurchaseSource] = useState<string>('');
   const [purchaseUrl, setPurchaseUrl] = useState('');
   const [notes, setNotes] = useState('');
+  const [scanId, setScanId] = useState<string | null>(scanIdParam);
   const [gradeSessionId, setGradeSessionId] = useState<string | null>(null);
   const [subGrades, setSubGrades] = useState<GraderSessionPrefill['subGrades']>(null);
   const [existingPhotos, setExistingPhotos] = useState<CollectionPhoto[]>([]);
@@ -114,14 +117,58 @@ function AddCardForm() {
   }, [sessionId, queryGrade, queryCompany]);
 
   useEffect(() => {
-    if (sessionId) return;
+    if (!scanIdParam || sessionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadScanPrefill() {
+      try {
+        const response = await fetch(`/api/scanner/scan/${scanIdParam}`);
+        const data = await readJsonResponse<ScanPrefill & { error?: string }>(response);
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        setScanId(data.scanId);
+        if (data.cardId) setCardId(data.cardId);
+        if (data.player) setPlayer(data.player);
+        if (data.year != null) setYear(String(data.year));
+        if (data.sport) setSport(data.sport);
+        if (data.setName) setSetName(data.setName);
+        if (data.cardNumber) setCardNumber(data.cardNumber);
+        if (data.parallel) setParallel(data.parallel);
+        if (data.certLookupSuccess) {
+          setConditionType('graded');
+          if (data.grade != null) setGrade(data.grade);
+          if (data.gradingCompany) setGradingCompany(data.gradingCompany);
+          if (data.certNumber) setCertNumber(data.certNumber);
+        }
+        setExistingPhotos(
+          data.imageUrl ? [{ id: 'scan-prefill-0', imageUrl: data.imageUrl, position: 0 }] : []
+        );
+      } catch {
+        // Prefill is optional.
+      }
+    }
+
+    void loadScanPrefill();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scanIdParam, sessionId]);
+
+  useEffect(() => {
+    if (sessionId || scanIdParam) return;
     if (queryGrade || queryCompany || queryCert) {
       setConditionType('graded');
       if (queryGrade) setGrade(Number(queryGrade));
       if (queryCompany) setGradingCompany(queryCompany);
       if (queryCert) setCertNumber(queryCert);
     }
-  }, [sessionId, queryGrade, queryCompany, queryCert]);
+  }, [sessionId, scanIdParam, queryGrade, queryCompany, queryCert]);
 
   useEffect(() => {
     return () => {
@@ -162,6 +209,7 @@ function AddCardForm() {
     setPurchaseSource('');
     setPurchaseUrl('');
     setNotes('');
+    setScanId(null);
     setGradeSessionId(null);
     setSubGrades(null);
     setExistingPhotos([]);
@@ -233,6 +281,7 @@ function AddCardForm() {
           grade: conditionType === 'graded' ? grade : null,
           certNumber: certNumber.trim() || null,
           subGrades: conditionType === 'raw' ? subGrades : null,
+          scanId,
           gradeSessionId,
           frontImageUrl: photoUrls[0] ?? null,
           photoUrls,

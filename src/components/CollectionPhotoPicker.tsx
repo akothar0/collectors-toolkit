@@ -15,15 +15,64 @@ type CollectionPhotoPickerProps = {
   onRemovePending: (pendingId: string) => void;
   disabled?: boolean;
   helperText?: string;
+  variant?: 'default' | 'compact';
 };
 
 export function CollectionPhotoPicker({
   existingPhotos, pendingPhotos, onFilesSelected, onRemoveExisting,
   onRemovePending, disabled = false,
   helperText = 'Add up to 10 photos. The first photo becomes the cover used across your collection.',
+  variant = 'default',
 }: CollectionPhotoPickerProps) {
   const inputId = useId();
   const hasPhotos = existingPhotos.length > 0 || pendingPhotos.length > 0;
+
+  if (variant === 'compact') {
+    return (
+      <div className="space-y-3">
+        <label
+          htmlFor={inputId}
+          className="inline-flex cursor-pointer items-center gap-2 rounded border border-rule px-3 py-2 font-mono text-[11px] text-ink-2 hover:border-ink hover:text-ink"
+        >
+          <input
+            id={inputId}
+            type="file"
+            accept="image/*"
+            multiple
+            className="sr-only"
+            aria-label="Add collection photos"
+            disabled={disabled}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (files.length > 0) onFilesSelected(files);
+              e.currentTarget.value = '';
+            }}
+          />
+          <Camera className="h-3.5 w-3.5" />
+          {hasPhotos ? 'Add more photos' : 'Add photos'}
+        </label>
+        {pendingPhotos.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {pendingPhotos.map((photo) => (
+              <div key={photo.id} className="relative h-16 w-12 overflow-hidden rounded border border-accent/30">
+                <img src={photo.previewUrl} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => onRemovePending(photo.id)}
+                  disabled={disabled}
+                  className="absolute right-0.5 top-0.5 rounded-full bg-surface/90 p-0.5 text-ink-3 hover:text-negative"
+                  aria-label="Remove pending photo"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {helperText ? <p className="text-[12px] text-ink-3">{helperText}</p> : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

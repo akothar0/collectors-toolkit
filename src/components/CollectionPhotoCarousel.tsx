@@ -1,13 +1,21 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { CollectionPhoto } from '@/lib/collection-photos';
 
 const SWIPE_THRESHOLD_PX = 40;
 
-export function CollectionPhotoCarousel({ photos, alt }: { photos: CollectionPhoto[]; alt: string }) {
+export function CollectionPhotoCarousel({
+  photos,
+  alt,
+  onRemovePhoto,
+}: {
+  photos: CollectionPhoto[];
+  alt: string;
+  onRemovePhoto?: (photoId: string) => void;
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const swipeStartX = useRef<number | null>(null);
 
@@ -46,6 +54,16 @@ export function CollectionPhotoCarousel({ photos, alt }: { photos: CollectionPho
         onPointerCancel={() => { swipeStartX.current = null; }}
       >
         <img src={active.imageUrl} alt={alt} className="aspect-[3/4] w-full object-cover" />
+        {onRemovePhoto && !active.id.startsWith('legacy-') ? (
+          <button
+            type="button"
+            onClick={() => onRemovePhoto(active.id)}
+            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-surface/90 text-ink-2 hover:text-negative"
+            aria-label="Remove photo"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         {photos.length > 1 && (
           <>
             <button type="button" onClick={() => goTo(activeIndex - 1)} aria-label="Previous photo"

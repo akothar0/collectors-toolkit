@@ -6,10 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { ExternalLink, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CollectionCardForm } from '@/components/CollectionCardForm';
-import { CollectionPhotoCarousel } from '@/components/CollectionPhotoCarousel';
-import { CollectionPhotoPicker } from '@/components/CollectionPhotoPicker';
+import { CollectionCardMedia } from '@/components/CollectionCardMedia';
 import { Eyebrow, Rule } from '@/components/editorial';
-import { Slab, type SlabHolding } from '@/components/Slab';
+import type { SlabHolding } from '@/components/Slab';
 import { detailToFormValues, formValuesToPayload, type CollectionCardDetail } from '@/lib/collection-detail';
 import { makePendingCollectionPhotos, type PendingCollectionPhoto, uploadCollectionPhotoFiles } from '@/lib/collection-photo-client';
 import { displayPlayer, displaySetName, formatDateLabel, formatGainLoss, formatGradeBadge, formatPrice } from '@/lib/collection-presenter';
@@ -214,36 +213,27 @@ export default function CollectionCardDetailPage() {
         </div>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-          {/* Left — slab + photos */}
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <Slab holding={heroSlab} width={250} height={375} flavor="light" />
-            </div>
-            <CollectionPhotoCarousel photos={card.photos} alt={player} />
-            <div className="rounded border border-rule bg-surface p-4">
-              <Eyebrow className="mb-3">Photos</Eyebrow>
-              <CollectionPhotoPicker
-                existingPhotos={card.photos}
-                pendingPhotos={pendingPhotos}
-                onFilesSelected={files => setPendingPhotos(cur => [...cur, ...makePendingCollectionPhotos(files)])}
-                onRemoveExisting={handleRemovePhoto}
-                onRemovePending={id => setPendingPhotos(cur => {
-                  const t = cur.find(p => p.id === id);
-                  if (t) URL.revokeObjectURL(t.previewUrl);
-                  return cur.filter(p => p.id !== id);
-                })}
-                disabled={photoUploading}
-                helperText={card.photos.length > 0 ? "Swipe through saved photos above. Add more or remove shots you no longer want." : "Add front, back, and detail shots."}
-              />
-              {pendingPhotos.length > 0 && (
-                <button type="button" onClick={handleAddPhotos} disabled={photoUploading}
-                  className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90 disabled:opacity-50">
-                  {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Upload selected photos'}
-                </button>
-              )}
-            </div>
-          </div>
-
+          {/* Left — card media */}
+          <CollectionCardMedia
+            photos={card.photos}
+            pendingPhotos={pendingPhotos}
+            heroSlab={heroSlab}
+            alt={player}
+            disabled={photoUploading}
+            photoUploading={photoUploading}
+            onFilesSelected={(files) =>
+              setPendingPhotos((cur) => [...cur, ...makePendingCollectionPhotos(files)])
+            }
+            onRemoveExisting={handleRemovePhoto}
+            onRemovePending={(id) =>
+              setPendingPhotos((cur) => {
+                const target = cur.find((p) => p.id === id);
+                if (target) URL.revokeObjectURL(target.previewUrl);
+                return cur.filter((p) => p.id !== id);
+              })
+            }
+            onUploadPending={handleAddPhotos}
+          />
           {/* Right — info */}
           <div className="space-y-5">
             {/* Heading */}

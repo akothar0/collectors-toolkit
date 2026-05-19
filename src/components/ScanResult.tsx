@@ -75,11 +75,17 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
   const subtitle = useMemo(() => getVerifiedSubtitle(result), [result]);
   const showCertPrompt = useMemo(() => needsCertConfirmation(result), [result]);
   const collectionAddHref = useMemo(() => {
+    if (result.scanId) {
+      return `/collection/add?scan=${encodeURIComponent(result.scanId)}`;
+    }
     const params = new URLSearchParams();
     if (result.cardPlayer) params.set('player', result.cardPlayer);
     if (result.cardYear) params.set('year', String(result.cardYear));
     const setVal = result.cardSet ?? result.cardManufacturer;
     if (setVal) params.set('set', setVal);
+    if (result.cardNumber) params.set('cardNumber', result.cardNumber);
+    if (result.cardParallel) params.set('parallel', result.cardParallel);
+    if (result.cardSport) params.set('sport', result.cardSport);
     if (result.officialGrade != null) params.set('grade', String(result.officialGrade));
     if (result.gradingCompany) params.set('company', result.gradingCompany);
     if (result.certNumber) params.set('cert', result.certNumber);
@@ -202,6 +208,10 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
           )}
 
           {result.certLookupSuccess && result.cardPlayer && (
+            <CatalogIdentityPreview scan={result} />
+          )}
+
+          {result.certLookupSuccess && result.cardPlayer && (
             <CardInsight
               player={result.cardPlayer}
               year={result.cardYear ?? null}
@@ -247,7 +257,7 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
             {!alreadySaved && (
               <button type="button" onClick={() => setSaveOverlayOpen(true)}
                 className="font-mono text-[11px] text-ink-3 hover:text-ink">
-                save with notes →
+                quick save (notes only) →
               </button>
             )}
             {onTryAgain && (
@@ -306,6 +316,31 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+function CatalogIdentityPreview({ scan }: { scan: ScannerResult }) {
+  const rows = [
+    { label: 'Set', value: formatCatalogText(scan.cardSet ?? scan.cardManufacturer) },
+    { label: 'Card #', value: scan.cardNumber },
+    { label: 'Parallel', value: formatCatalogText(scan.cardParallel) },
+  ].filter((row) => row.value);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="rounded border border-rule bg-surface-2 px-4 py-3">
+      <Eyebrow className="mb-2">From cert registry</Eyebrow>
+      <dl className="space-y-1">
+        {rows.map((row) => (
+          <div key={row.label} className="flex justify-between gap-4 text-[13px]">
+            <dt className="font-mono text-[10px] uppercase tracking-wide text-ink-3">{row.label}</dt>
+            <dd className="text-right text-ink">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 font-mono text-[10px] text-ink-3">Edit on the add form if anything looks off.</p>
     </div>
   );
 }

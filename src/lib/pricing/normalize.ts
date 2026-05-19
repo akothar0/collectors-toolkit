@@ -37,8 +37,10 @@ export function flattenPricingRecords(
     if (filters?.gradeId) {
       continue;
     }
-    if (filters?.parallelId && record.parallel_id && record.parallel_id !== filters.parallelId) {
-      continue;
+    if (filters?.parallelId) {
+      if (!record.parallel_id || record.parallel_id !== filters.parallelId) {
+        continue;
+      }
     }
     records.push(record);
   }
@@ -51,8 +53,10 @@ export function flattenPricingRecords(
 
       const gradeValue = parseGradeValue(gradeGroup.grade_value);
       for (const record of gradeGroup.records ?? []) {
-        if (filters?.parallelId && record.parallel_id && record.parallel_id !== filters.parallelId) {
-          continue;
+        if (filters?.parallelId) {
+          if (!record.parallel_id || record.parallel_id !== filters.parallelId) {
+            continue;
+          }
         }
         records.push({
           ...record,

@@ -27,7 +27,8 @@ test('parseBGSLookupJson maps Beckett API payload (Tim Lincecum BGS 9.5)', () =>
   assert.equal(result?.certNumber, '5957409');
   assert.equal(result?.player, 'Tim Lincecum AU');
   assert.equal(result?.year, 2007);
-  assert.match(result?.setName ?? '', /Bowman Chrome Prospects Refractors/i);
+  assert.match(result?.setName ?? '', /Bowman Chrome Prospects/i);
+  assert.equal(result?.parallel, 'Refractors');
   assert.equal(result?.cardNumber, 'BC238');
   assert.equal(result?.grade, 9.5);
   assert.equal(result?.gradeDescription, 'GEM MINT');

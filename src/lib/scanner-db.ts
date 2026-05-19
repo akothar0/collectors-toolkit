@@ -86,7 +86,9 @@ export function gradedScanRowToScannerResult(
     cardManufacturer: card?.manufacturer ?? null,
     cardSport: card?.sport ?? null,
     cardSet: card?.set_name ?? (typeof lookup?.setName === 'string' ? lookup.setName : null),
-    cardParallel: card?.parallel ?? null,
+    cardParallel:
+      card?.parallel ??
+      (typeof lookup?.parallel === 'string' ? lookup.parallel : null),
     cardNumber: card?.card_number ?? (typeof lookup?.cardNumber === 'string' ? lookup.cardNumber : null),
     officialGrade: row.official_grade,
     gradeDescription: row.grade_description,

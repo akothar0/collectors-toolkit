@@ -63,6 +63,26 @@ export type CardSearchResult = {
   set_name: string | null;
 };
 
+export type ScanPrefill = {
+  scanId: string;
+  cardId: string | null;
+  imageUrl: string | null;
+  certLookupSuccess: boolean;
+  player: string | null;
+  year: number | null;
+  sport: string | null;
+  setName: string | null;
+  manufacturer: string | null;
+  cardNumber: string | null;
+  parallel: string | null;
+  gradingCompany: string | null;
+  grade: number | null;
+  gradeDescription: string | null;
+  certNumber: string | null;
+  popAtGrade: number | null;
+  popHigher: number | null;
+};
+
 export type GraderSessionPrefill = {
   sessionId: string;
   frontImageUrl: string | null;

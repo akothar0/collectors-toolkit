@@ -13,6 +13,7 @@ import {
 import { mapCollectionRow, type CollectionRow } from '@/lib/collection-rows';
 import { displayPlayer, displaySetName, displayYear } from '@/lib/collection-presenter';
 import { findOrCreateCard } from '@/lib/card-catalog';
+import { isPersistableImageUrl } from '@/lib/scanner-image';
 import { createServiceClient } from '@/lib/supabase';
 import { getOrCreateUserId } from '@/lib/users';
 import { NextResponse } from 'next/server';
@@ -283,7 +284,22 @@ export async function POST(req: Request) {
     firstText(body.frontImageUrl, body.imageUrl),
     toText(body.backImageUrl)
   );
-  const resolvedPhotoUrls = photoUrls.length > 0 ? photoUrls : legacyPhotoUrls;
+  let resolvedPhotoUrls = photoUrls.length > 0 ? photoUrls : legacyPhotoUrls;
+
+  if (resolvedPhotoUrls.length === 0 && scanId) {
+    const { data: scanRow } = await supabase
+      .from('graded_scans')
+      .select('image_url')
+      .eq('id', scanId)
+      .eq('user_id', supabaseUserId)
+      .maybeSingle();
+
+    const scanImageUrl =
+      typeof scanRow?.image_url === 'string' ? scanRow.image_url.trim() : '';
+    if (isPersistableImageUrl(scanImageUrl)) {
+      resolvedPhotoUrls = [scanImageUrl];
+    }
+  }
   if (resolvedPhotoUrls.length > COLLECTION_CARD_PHOTO_LIMIT) {
     return NextResponse.json(
       { error: `You can upload up to ${COLLECTION_CARD_PHOTO_LIMIT} photos per card.` },
