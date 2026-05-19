@@ -17,7 +17,8 @@ export default clerkReady
 
         if (!userId) {
           const signInUrl = signInPathForRequest(req.url);
-          signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
+          const redirectTarget = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+          signInUrl.searchParams.set('redirect_url', redirectTarget);
           return NextResponse.redirect(signInUrl);
         }
       }

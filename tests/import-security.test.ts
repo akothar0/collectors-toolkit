@@ -7,6 +7,7 @@ import {
 import {
   assertParsedRowCount,
   capParsedRows,
+  IMPORT_DAILY_LIMIT,
   IMPORT_MAX_FILES,
   IMPORT_MAX_PARSED_ROWS,
   IMPORT_MAX_SAVE_ITEMS,
@@ -71,4 +72,8 @@ test('capParsedRows and assertParsedRowCount enforce batch size', () => {
 
 test('IMPORT_MAX_SAVE_ITEMS is 200', () => {
   assert.equal(IMPORT_MAX_SAVE_ITEMS, 200);
+});
+
+test('IMPORT_DAILY_LIMIT is 100', () => {
+  assert.equal(IMPORT_DAILY_LIMIT, 100);
 });

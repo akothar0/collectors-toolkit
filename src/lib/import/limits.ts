@@ -1,3 +1,4 @@
+export const IMPORT_DAILY_LIMIT = 100;
 export const IMPORT_MAX_FILES = 10;
 export const IMPORT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const IMPORT_MAX_PDF_BYTES = 15 * 1024 * 1024;

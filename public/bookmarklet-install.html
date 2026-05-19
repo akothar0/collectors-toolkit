@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Install eBay Import Bookmarklet</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      a.install {
+        display: inline-block;
+        margin: 1rem 0;
+        padding: 0.75rem 1.25rem;
+        background: #2563eb;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 9999px;
+        font-weight: 600;
+      }
+      a.install:not([href]) {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      .hint {
+        color: #64748b;
+        font-size: 0.875rem;
+      }
+      .err {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Install eBay Import Bookmarklet</h1>
+    <p class="hint">Drag the button below to your bookmarks bar. (React blocks javascript: links in the app UI; this page does not.)</p>
+    <p><a id="install" class="install" href="#">Loading bookmarklet…</a></p>
+    <ol>
+      <li>Drag <strong>Import from eBay</strong> to your bookmarks bar</li>
+      <li>Open <a href="https://ebay.com/mye/myebay/purchase">ebay.com/mye/myebay/purchase</a></li>
+      <li>Click the bookmark — you will return here to review purchases</li>
+    </ol>
+    <p id="status" class="hint"></p>
+    <script>
+      (function () {
+        var link = document.getElementById('install');
+        var status = document.getElementById('status');
+        fetch('/api/bookmarklet', { cache: 'no-store' })
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+          })
+          .then(function (code) {
+            link.href = 'javascript:' + code;
+            link.textContent = 'Import from eBay';
+            status.textContent = 'Ready — drag the link above to your bookmarks bar.';
+          })
+          .catch(function (e) {
+            link.textContent = 'Failed to load';
+            status.innerHTML = '<span class="err">Could not load bookmarklet: ' + String(e) + '</span>';
+          });
+      })();
+    </script>
+  </body>
+</html>

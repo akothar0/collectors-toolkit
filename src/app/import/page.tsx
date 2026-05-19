@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -24,18 +24,35 @@ function ImportPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookmarkletCode, setBookmarkletCode] = useState('');
+  const [bookmarkletAppUrl, setBookmarkletAppUrl] = useState('');
   const [copied, setCopied] = useState(false);
-  const bookmarkletRef = useRef<HTMLAnchorElement>(null);
 
-  // Auto-handle bookmarklet redirect with ?bd= param
   const bd = searchParams.get('bd');
+  const bmDebug = searchParams.get('bm_debug');
+
   useEffect(() => {
+    setActiveTab('ebay_bookmarklet');
+
+    if (bmDebug) {
+      const links = searchParams.get('links');
+      const msg = searchParams.get('msg');
+      if (bmDebug === 'empty') {
+        setError(`No purchases found on the eBay page (${links ?? '?'} item links seen). Scroll to load orders and try again.`);
+      } else if (bmDebug === 'url_too_long') {
+        setError('Too many purchases to fit in one import URL. Try with fewer visible orders or use screenshots.');
+      } else if (bmDebug === 'error') {
+        setError(msg ? decodeURIComponent(msg) : 'Bookmarklet failed on eBay.');
+      } else {
+        setError(`Bookmarklet debug: ${bmDebug}`);
+      }
+      return;
+    }
+
     if (bd) {
-      setActiveTab('ebay_bookmarklet');
       handleBookmarkletData(bd);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bd, bmDebug]);
 
   // Load bookmarklet code from API (no-store so always fresh)
   useEffect(() => {
@@ -45,12 +62,16 @@ function ImportPageInner() {
       .then((code) => {
         const full = `javascript:${code}`;
         setBookmarkletCode(full);
-        if (bookmarkletRef.current) {
-          bookmarkletRef.current.href = full;
-        }
+        const match = code.match(/window\.location\.href='([^']+)\/import\?bd='/);
+        if (match?.[1]) setBookmarkletAppUrl(match[1]);
       })
       .catch(() => {});
   }, [activeTab]);
+
+  const bookmarkletPortMismatch =
+    typeof window !== 'undefined' &&
+    bookmarkletAppUrl &&
+    window.location.origin !== bookmarkletAppUrl;
 
   async function copyBookmarklet() {
     if (!bookmarkletCode) return;
@@ -65,7 +86,7 @@ function ImportPageInner() {
     try {
       const formData = new FormData();
       formData.append('source', 'ebay_bookmarklet');
-      formData.append('bookmarkletData', decodeURIComponent(encoded));
+      formData.append('bookmarkletData', encoded);
       const res = await fetch('/api/import/parse', { method: 'POST', body: formData });
       const json = await res.json() as { batchId?: string; error?: string };
       if (!res.ok || !json.batchId) throw new Error(json.error ?? 'Parse failed.');
@@ -169,32 +190,51 @@ function ImportPageInner() {
                   <ol className="space-y-2 text-sm text-slate-600">
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>
-                      Click <strong>Copy Bookmarklet</strong> below
+                      Open the{' '}
+                      <a href="/bookmarklet-install.html" target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline underline-offset-2">
+                        bookmarklet installer
+                      </a>{' '}
+                      and drag <strong>Import from eBay</strong> to your bookmarks bar
                     </li>
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>
-                      Right-click your bookmarks bar → <strong>Add page…</strong> (or bookmark manager → New bookmark)
+                      Or click <strong>Copy Bookmarklet</strong> below and paste the full URL into a new bookmark
                     </li>
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>
-                      Set Name: <strong>Import from eBay</strong>, then paste the copied code into the <strong>URL</strong> field
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">4</span>
-                      Go to <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">ebay.com/mye/myebay/purchase</a> and click the bookmark
+                      On <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">ebay.com/mye/myebay/purchase</a>, click the bookmark — you&apos;ll return here to review
                     </li>
                   </ol>
 
-                  <button
-                    onClick={copyBookmarklet}
-                    disabled={!bookmarkletCode}
-                    className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
-                  >
-                    {copied ? '✓ Copied!' : bookmarkletCode ? 'Copy Bookmarklet' : 'Loading…'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href="/bookmarklet-install.html"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white no-underline transition-colors hover:bg-brand-700"
+                    >
+                      Open bookmarklet installer
+                    </a>
+                    <button
+                      type="button"
+                      onClick={copyBookmarklet}
+                      disabled={!bookmarkletCode}
+                      className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40"
+                    >
+                      {copied ? '✓ Copied!' : 'Copy Bookmarklet'}
+                    </button>
+                  </div>
+
+                  {bookmarkletPortMismatch && (
+                    <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Re-copy or re-drag the bookmarklet from this page ({window.location.origin}).
+                      An older copy may point at {bookmarkletAppUrl}.
+                    </p>
+                  )}
 
                   <p className="text-xs text-slate-400">
                     After clicking the bookmark on eBay, you&apos;ll be redirected here automatically.
+                    {bookmarkletAppUrl ? ` Redirect target: ${bookmarkletAppUrl}` : ''}
                   </p>
                 </>
               )}

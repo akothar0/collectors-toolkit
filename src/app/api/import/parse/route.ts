@@ -6,6 +6,7 @@ import { bookmarkletRowsToParsedItems, parseBookmarkletPayload } from '@/lib/imp
 import {
   assertParsedRowCount,
   capParsedRows,
+  IMPORT_DAILY_LIMIT,
   IMPORT_MAX_PASTE_CHARS,
   validateImportFiles,
 } from '@/lib/import/limits';
@@ -20,14 +21,9 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const IMPORT_LIMIT = 5;
-
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:POST-entry',message:'import parse entry',data:{hasUserId:Boolean(userId)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -36,19 +32,13 @@ export async function POST(req: Request) {
     const email = clerkUser?.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ?? null;
     const supabaseUserId = await getOrCreateUserId(userId, email);
 
-    const allowed = await checkRateLimit(supabaseUserId, 'import', IMPORT_LIMIT);
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:rate-limit',message:'rate limit result',data:{allowed},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    const allowed = await checkRateLimit(supabaseUserId, 'import', IMPORT_DAILY_LIMIT);
     if (!allowed) {
       return NextResponse.json({ error: 'Daily import limit reached. Try again tomorrow.' }, { status: 429 });
     }
 
     const formData = await req.formData();
     const source = String(formData.get('source') ?? '');
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:source',message:'import source',data:{source},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     let parsed: ParsedImportItem[] = [];
     let fileUrl: string | null = null;
@@ -61,15 +51,7 @@ export async function POST(req: Request) {
       }
 
       for (const file of files) {
-        let url: string;
-        try {
-          url = await uploadImportFileSigned(supabaseUserId, file);
-        } catch (uploadErr) {
-          // #region agent log
-          fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:upload-fail',message:'storage upload failed',data:{error:uploadErr instanceof Error?uploadErr.message:String(uploadErr)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
-          throw uploadErr;
-        }
+        const url = await uploadImportFileSigned(supabaseUserId, file);
         if (!fileUrl) fileUrl = url;
         const items = await parseEbayScreenshot(file);
         parsed.push(...items);
@@ -114,10 +96,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid source.' }, { status: 400 });
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:parsed-count',message:'rows after source parse',data:{source,parsedCount:parsed.length},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
-
     const rowCheck = assertParsedRowCount(parsed.length);
     if (!rowCheck.ok) {
       return NextResponse.json({ error: rowCheck.message }, { status: rowCheck.status });
@@ -149,9 +127,6 @@ export async function POST(req: Request) {
       .single();
 
     if (batchError || !batch?.id) {
-      // #region agent log
-      fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:batch-insert-fail',message:'import_batches insert failed',data:{error:batchError?.message??'no id'},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       console.error('Failed to create import batch', { error: batchError?.message });
       return NextResponse.json({ error: 'Import failed. Please try again.' }, { status: 500 });
     }
@@ -183,19 +158,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Import failed. Please try again.' }, { status: 500 });
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:success',message:'import parse success',data:{batchId,totalParsed:cappedNormalized.length},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
-
     return NextResponse.json({
       batchId,
       totalParsed: cappedNormalized.length,
       totalMatched,
     });
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7274/ingest/c0a1f3a8-8163-44c5-9171-6cc76856d3a3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63689e'},body:JSON.stringify({sessionId:'63689e',location:'parse/route.ts:catch',message:'import parse exception',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     console.error('Import parse failed', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Import failed. Please try again.' }, { status: 500 });
   }

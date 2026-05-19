@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { resolveBookmarkletAppUrl } from '@/lib/bookmarklet-url';
 
 export const runtime = 'nodejs';
 
@@ -6,30 +7,42 @@ export const runtime = 'nodejs';
 // User drags the bookmarklet link to their bookmarks bar, then clicks it on the eBay purchases page.
 export function GET(req: Request) {
   const reqUrl = new URL(req.url);
-  const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
-  // Strip trailing slash so we never produce //import
-  const appUrl = rawAppUrl.replace(/\/$/, '');
+  const appUrl = resolveBookmarkletAppUrl(reqUrl);
 
   // eBay item titles are plain <a> tags linking to /itm/ — no reliable class names.
   // Strategy: find all item links, then walk up the DOM to extract price + date from
   // the surrounding order container.
   const source = `(function(){
+  try {
   var items=[];
   var seen=new Set();
 
-  // All eBay item page links contain /itm/ in the href
+  function itemId(href){
+    var m=(href||'').match(/\\/itm\\/([^/?#]+)/);
+    return m?m[1]:href;
+  }
+
+  function linkTitle(a){
+    var t=(a.textContent||'').trim();
+    if(t.length>=10)return t;
+    var aria=(a.getAttribute('aria-label')||'').trim();
+    if(aria.length>=10)return aria;
+    var attr=(a.getAttribute('title')||'').trim();
+    if(attr.length>=10)return attr;
+    return t;
+  }
+
   var links=Array.from(document.querySelectorAll('a[href*="/itm/"]'));
 
   links.forEach(function(a){
-    var title=(a.textContent||'').trim();
-    // Skip image links, short labels, duplicates
-    if(title.length<15||seen.has(title))return;
-    seen.add(title);
+    var title=linkTitle(a);
+    var id=itemId(a.href);
+    if(title.length<10||seen.has(id))return;
+    seen.add(id);
 
     var price=null,date=null;
-    // Walk up 10 levels to find the order block containing price + date
     var el=a.parentElement;
-    for(var i=0;i<10&&el;i++){
+    for(var i=0;i<12&&el;i++){
       var text=el.innerText||'';
       if(!price){
         var pm=text.match(/US\\s*\\$\\s*([\\d,]+\\.?\\d*)|(?:Order total:\\s*US\\s*\\$|\\$)\\s*([\\d,]+\\.?\\d*)/);
@@ -45,12 +58,29 @@ export function GET(req: Request) {
     items.push({title:title,price:price,date:date});
   });
 
+  var linkCount=links.length;
   if(items.length===0){
-    alert('No purchases found. Make sure you are on: ebay.com/mye/myebay/purchase');
+    alert('No purchases found. Open ebay.com/mye/myebay/purchase, scroll to load orders, then try again.');
+    window.location.href='${appUrl}/import?bm_debug=empty&links='+linkCount;
     return;
   }
-  var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(items))));
-  window.location.href='${appUrl}/import?bd='+encodeURIComponent(encoded);
+  var payload=encodeURIComponent(JSON.stringify(items));
+  var target='${appUrl}/import?bd='+payload;
+  if(target.length>8000){
+    alert('Too many items in URL ('+items.length+'). Saving first 30 — use screenshots for more.');
+    target='${appUrl}/import?bd='+encodeURIComponent(JSON.stringify(items.slice(0,30)));
+  }
+  if(target.length>1800000){
+    alert('Too many items to import at once ('+items.length+'). Try fewer visible orders or use screenshots.');
+    window.location.href='${appUrl}/import?bm_debug=url_too_long&count='+items.length;
+    return;
+  }
+  window.location.href=target;
+  } catch(e) {
+    var msg=(e&&e.message?e.message:String(e));
+    alert('Import bookmarklet error: '+msg);
+    window.location.href='${appUrl}/import?bm_debug=error&msg='+encodeURIComponent(msg);
+  }
 })();`;
 
   return new NextResponse(source, {

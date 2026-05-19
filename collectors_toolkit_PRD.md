@@ -229,7 +229,7 @@ The following are explicitly out of scope for v1 (Weeks 1–8):
 |--------|-------|-----------|
 | Scanner scans | 10/user/day | PSA API is 100/day free; prevents cost overruns |
 | AI grade sessions | 10/user/day | GPT-4o vision costs ~$0.02/call |
-| Import batches | 5/user/day | Each batch can be large; GPT-4o cost per batch |
+| Import batches | 100/user/day | Each batch can be large; GPT-4o cost per batch |
 
 Limits tracked in `usage_logs` table. Shown to user on each tool page.
 
@@ -293,7 +293,7 @@ See `collectors_toolkit_product_spec.md` for the full SQL schema. Summary of key
 | `collection_cards` | User's card instances | N per user × cards |
 | `graded_scans` | Scanner sessions | ~10/user/day max |
 | `raw_grade_sessions` | AI grade sessions | ~10/user/day max |
-| `import_batches` | Import sessions | ~5/user/day max |
+| `import_batches` | Import sessions | ~100/user/day max |
 | `import_items` | Individual parsed cards from imports | Up to 200/batch |
 | `want_list` | User's hunt list | N per user |
 | `card_sets` | Set definitions | Shared, grows over time |

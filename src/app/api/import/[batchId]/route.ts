@@ -34,6 +34,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ batchId
     .from('import_items')
     .select('*')
     .eq('batch_id', batchId)
+    .eq('user_id', supabaseUserId)
     .order('created_at', { ascending: true });
 
   if (itemsError) {
