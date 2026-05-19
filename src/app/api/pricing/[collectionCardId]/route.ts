@@ -1,8 +1,17 @@
 import { getAuthenticatedSupabaseUserId } from '@/lib/collection-auth';
 import { CardSightApiError, isCardSightConfigured } from '@/lib/cardsight/client';
 import { getCollectionCardPricingDisplay } from '@/lib/pricing/display-collection-card';
+import {
+  exploreCollectionCardPricing,
+  isExploreRequest,
+  parseExploreFilters,
+} from '@/lib/pricing/explore-collection-pricing';
 import { mapPricingPayload, resolveCompsScopeNote } from '@/lib/pricing/presenter';
-import { refreshCollectionCardPricing } from '@/lib/pricing/refresh-collection-card';
+import { loadFilterOptionsForCollectionCard } from '@/lib/pricing/pricing-filter-options';
+import {
+  loadCollectionCardForPricing,
+  refreshCollectionCardPricing,
+} from '@/lib/pricing/refresh-collection-card';
 import { loadLatestSnapshotForCollectionCard } from '@/lib/pricing/store';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { NextResponse } from 'next/server';
@@ -37,6 +46,59 @@ export async function GET(req: Request, context: RouteContext) {
   const force = url.searchParams.get('force') === '1';
 
   try {
+    if (!force && isExploreRequest(url)) {
+      const explore = await exploreCollectionCardPricing(
+        collectionCardId,
+        supabaseUserId,
+        parseExploreFilters(url)
+      );
+
+      if (explore.status === 'collection_not_found') {
+        return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
+      }
+
+      if (explore.status === 'unsupported_sport' || explore.status === 'incomplete_identity') {
+        return NextResponse.json(
+          mapPricingPayload({
+            configured: true,
+            status: explore.status,
+            message: explore.message,
+            canRefresh: false,
+          })
+        );
+      }
+
+      if (
+        explore.status === 'no_cache' ||
+        explore.status === 'catalog_not_found' ||
+        explore.status === 'ambiguous' ||
+        explore.status === 'needs_review'
+      ) {
+        return NextResponse.json(
+          mapPricingPayload({
+            configured: true,
+            status: explore.status === 'no_cache' ? 'idle' : explore.status,
+            message: explore.message,
+            canRefresh: true,
+          })
+        );
+      }
+
+      if (explore.status === 'explore') {
+        return NextResponse.json(explore.payload);
+      }
+
+      return NextResponse.json(
+        mapPricingPayload({
+          configured: true,
+          status: 'error',
+          message: 'Unable to explore comps.',
+          canRefresh: true,
+        }),
+        { status: 500 }
+      );
+    }
+
     if (force) {
       const allowed = await checkRateLimit(
         supabaseUserId,
@@ -158,8 +220,13 @@ export async function GET(req: Request, context: RouteContext) {
     }
 
     if (display.status === 'cached') {
-      return NextResponse.json(
-        mapPricingPayload({
+      const filterOptions = await loadFilterOptionsForCollectionCard(
+        collectionCardId,
+        supabaseUserId
+      );
+      const row = await loadCollectionCardForPricing(collectionCardId, supabaseUserId);
+      return NextResponse.json({
+        ...mapPricingPayload({
           configured: true,
           status: 'cached',
           snapshot: display.snapshot,
@@ -169,8 +236,15 @@ export async function GET(req: Request, context: RouteContext) {
             snapshot: display.snapshot,
             referenceKey: display.referenceKey ?? null,
           }),
-        })
-      );
+        }),
+        filterOptions: filterOptions ?? undefined,
+        slabDefaults: row
+          ? {
+              gradingCompany: row.grading_company,
+              grade: row.grade != null ? Number(row.grade) : null,
+            }
+          : undefined,
+      });
     }
 
     return NextResponse.json(

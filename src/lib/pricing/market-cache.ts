@@ -1,5 +1,6 @@
 import { getCardPricing } from '@/lib/cardsight/client';
 import type { CardSightPeriod, PricingResponse } from '@/lib/cardsight/types';
+import { isPricingMonthlyCapReached } from '@/lib/pricing/pricing-quota';
 import { createServiceClient } from '@/lib/supabase';
 
 const DEFAULT_PERIOD: CardSightPeriod = '3m';
@@ -110,6 +111,14 @@ export async function fetchOrLoadMarketCache(
     if (existing && isFresh(existing.stale_after)) {
       return { cache: existing, fromApi: false };
     }
+  }
+
+  const existingStale = await loadMarketCache(cardsightCardId, period);
+  if (await isPricingMonthlyCapReached()) {
+    if (existingStale) {
+      return { cache: existingStale, fromApi: false };
+    }
+    throw new Error('Monthly CardSight pricing quota reached. Try again next month.');
   }
 
   const pricingResponse = await getCardPricing(cardsightCardId, {

@@ -104,3 +104,18 @@ test('sliceMarketCache raw card uses all_conditions', () => {
   assert.equal(sliced.display.result.sampleSize, 1);
   assert.equal(sliced.strict, null);
 });
+
+test('sliceMarketCache manual mode does not walk down tiers', () => {
+  const sliced = sliceMarketCache({
+    pricingResponse: lincecumLikeResponse,
+    gradeId: 'bgs-95-id',
+    gradingCompany: 'BGS',
+    grade: 9.5,
+    parallelId: 'refractor-id',
+    isGraded: true,
+    sliceMode: 'manual',
+  });
+
+  assert.equal(sliced.display.result.sampleSize, 0);
+  assert.match(sliced.scopeNote, /No sales match/i);
+});

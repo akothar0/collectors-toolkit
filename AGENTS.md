@@ -40,12 +40,19 @@ Apply in order under `supabase/migrations/`:
 | File | Purpose |
 |------|---------|
 | `001_initial_schema.sql` | Core tables (`cards`, `collection_cards`, scans, import, sets, etc.) |
+| `013_price_history_alerts.sql` | `collection_card_market_observations`, want-list alert events, `email_alerts_enabled` |
 | `002_grader_columns.sql` | Raw grader multi-image columns |
 | `003_import_storage.sql` | Import file storage bucket |
 | `004_rls.sql` | Deny-all RLS on user tables |
 | `005_card_images_storage.sql` | Public `card-images` bucket |
 | `006_collection_card_images.sql` | Multi-photo gallery + backfill from front/back URLs |
 | `007_rls_sets.sql` | RLS on `card_sets`, `collection_set_progress` |
+| `008_cardsight_pricing.sql` | CardSight pricing tables |
+| `009_rls_pricing.sql` | RLS on pricing tables |
+| `010_cardsight_market_cache.sql` | Global market cache |
+| `011_cardsight_grade_map.sql` | Grade ID map |
+| `012_rls_market_cache.sql` | RLS on market cache |
+| `013_price_history_alerts.sql` | Market observations + alert events |
 | `008_cardsight_pricing.sql` | Price snapshots/comparables + collection market columns |
 | `009_rls_pricing.sql` | Deny-all RLS on pricing tables |
 | `010_cardsight_market_cache.sql` | Global CardSight pricing cache + snapshot scope columns |

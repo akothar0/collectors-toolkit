@@ -11,6 +11,7 @@ import {
   strictValuationFromSlice,
   toPersistableDisplayResult,
 } from '@/lib/pricing/slice-market-cache';
+import { appendCollectionCardMarketObservation } from '@/lib/pricing/market-observations';
 import {
   applySnapshotToCollectionCard,
   loadLatestSnapshotForCollectionCard,
@@ -84,7 +85,7 @@ export async function loadCollectionCardForPricing(collectionCardId: string, use
   return data ? mapCollectionPricingRow(data as Record<string, unknown>) : null;
 }
 
-function eligibilityInputFromRow(row: CollectionCardPricingRow) {
+export function eligibilityInputFromRow(row: CollectionCardPricingRow) {
   const catalog = row.cards;
   return {
     sport: row.sport ?? catalog?.sport ?? null,
@@ -98,7 +99,7 @@ function eligibilityInputFromRow(row: CollectionCardPricingRow) {
   };
 }
 
-function buildResolveInput(
+export function buildResolveInput(
   row: CollectionCardPricingRow,
   segment: CollectionCardResolveInput['segment']
 ): CollectionCardResolveInput {
@@ -244,6 +245,7 @@ export async function refreshCollectionCardPricing(
   );
 
   await applySnapshotToCollectionCard(collectionCardId, stored, valuation);
+  await appendCollectionCardMarketObservation(collectionCardId, sliced);
 
   return {
     status: 'refreshed',

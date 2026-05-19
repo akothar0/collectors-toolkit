@@ -6,6 +6,7 @@ import { ChevronDown, ExternalLink, Heart, Loader2, Plus, Trash2 } from 'lucide-
 import { FetchErrorBanner } from '@/components/fetch-error-banner';
 import { useEffect, useState } from 'react';
 import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
+import type { PricingPanelData } from '@/lib/pricing/presenter';
 import { buildWantListAddUrl, type WantListItem } from '@/lib/wantlist';
 import { formatDateLabel, formatPrice } from '@/lib/collection-presenter';
 import { readJsonResponse } from '@/lib/http-json';
@@ -34,8 +35,42 @@ export default function WantListPage() {
   const [notes, setNotes] = useState('');
   const [adding, setAdding] = useState(false);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [fulfillPrompt, setFulfillPrompt] = useState<WantListItem | null>(null);
+  const [priceFilter, setPriceFilter] = useState<'all' | 'under' | 'over' | 'no_comps'>('all');
+  const [compStatusById, setCompStatusById] = useState<
+    Record<string, 'under' | 'over' | 'no_comps' | 'unknown'>
+  >({});
+
+  function parseMedianLabel(label: string | null) {
+    if (!label) return null;
+    const parsed = Number.parseFloat(label.replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function handleWantListPricingData(item: WantListItem, data: PricingPanelData) {
+    const median = parseMedianLabel(data.medianLabel);
+    if (median == null || data.sampleSize === 0) {
+      setCompStatusById((current) => ({ ...current, [item.id]: 'no_comps' }));
+      return;
+    }
+    if (item.targetPrice == null) {
+      setCompStatusById((current) => ({ ...current, [item.id]: 'unknown' }));
+      return;
+    }
+    setCompStatusById((current) => ({
+      ...current,
+      [item.id]: median <= item.targetPrice! ? 'under' : 'over',
+    }));
+  }
+
+  const visibleItems = items.filter((item) => {
+    if (priceFilter === 'all') return true;
+    const status = compStatusById[item.id] ?? 'unknown';
+    if (priceFilter === 'no_comps') return status === 'no_comps';
+    return status === priceFilter;
+  });
 
   async function loadItems() {
     setLoading(true);
@@ -56,6 +91,31 @@ export default function WantListPage() {
     void loadItems();
   }, []);
 
+  function clearForm() {
+    setDescription('');
+    setPlayer('');
+    setYear('');
+    setSetName('');
+    setTargetGrade('');
+    setTargetPrice('');
+    setNotes('');
+    setShowMoreDetails(false);
+    setEditingId(null);
+  }
+
+  function handleEdit(item: WantListItem) {
+    setEditingId(item.id);
+    setDescription(item.description);
+    setPlayer(item.player ?? '');
+    setYear(item.year != null ? String(item.year) : '');
+    setSetName(item.setName ?? '');
+    setTargetGrade(item.targetGrade != null ? String(item.targetGrade) : '');
+    setTargetPrice(item.targetPrice != null ? String(item.targetPrice) : '');
+    setNotes(item.notes ?? '');
+    setShowMoreDetails(true);
+    setTimeout(() => document.getElementById('wantlist-description')?.focus(), 0);
+  }
+
   async function handleAdd(event: React.FormEvent) {
     event.preventDefault();
     if (!description.trim()) {
@@ -65,34 +125,30 @@ export default function WantListPage() {
 
     setAdding(true);
     setError('');
+    const payload = {
+      description: description.trim(),
+      player: player.trim() || null,
+      year: year.trim() ? Number.parseInt(year, 10) : null,
+      setName: setName.trim() || null,
+      targetGrade: targetGrade.trim() ? Number.parseFloat(targetGrade) : null,
+      targetPrice: targetPrice.trim() ? Number.parseFloat(targetPrice) : null,
+      notes: notes.trim() || null,
+    };
     try {
-      const response = await fetch('/api/wantlist', {
-        method: 'POST',
+      const url = editingId ? `/api/wantlist/${editingId}` : '/api/wantlist';
+      const method = editingId ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: description.trim(),
-          player: player.trim() || null,
-          year: year.trim() ? Number.parseInt(year, 10) : null,
-          setName: setName.trim() || null,
-          targetGrade: targetGrade.trim() ? Number.parseFloat(targetGrade) : null,
-          targetPrice: targetPrice.trim() ? Number.parseFloat(targetPrice) : null,
-          notes: notes.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await readJsonResponse<WantListItem & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to add item.');
+      if (!response.ok) throw new Error(data.error ?? (editingId ? 'Unable to update item.' : 'Unable to add item.'));
 
-      setDescription('');
-      setPlayer('');
-      setYear('');
-      setSetName('');
-      setTargetGrade('');
-      setTargetPrice('');
-      setNotes('');
-      setShowMoreDetails(false);
+      clearForm();
       await loadItems();
     } catch (addError) {
-      setError(addError instanceof Error ? addError.message : 'Unable to add item.');
+      setError(addError instanceof Error ? addError.message : 'Unable to save item.');
     } finally {
       setAdding(false);
     }
@@ -152,22 +208,31 @@ export default function WantListPage() {
             ))}
           </ul>
         ) : items.length === 0 ? (
-          <div className="rounded border border-dashed border-rule bg-surface px-8 py-16 text-center ">
+          <div className="rounded border border-dashed border-rule bg-surface px-8 py-16 text-center">
             <Heart className="mx-auto h-12 w-12 text-ink-2" />
             <p className="mt-4 text-lg font-medium text-ink">Nothing on your list.</p>
             <p className="mt-2 text-sm text-ink-2">Add cards you&apos;re hunting — track prices and mark them found.</p>
-            <button
-              type="button"
-              onClick={() => document.getElementById('wantlist-description')?.focus()}
-              className="mt-6 inline-flex min-h-11 items-center gap-2 rounded bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-ink/90"
-            >
-              <Plus className="h-4 w-4" />
-              Add Item
-            </button>
           </div>
         ) : (
+          <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(['all', 'under', 'over', 'no_comps'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPriceFilter(key)}
+                className={`rounded border px-3 py-1 font-mono text-[10px] uppercase tracking-wide ${
+                  priceFilter === key
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-rule text-ink-2 hover:bg-surface-2'
+                }`}
+              >
+                {key === 'all' ? 'All' : key === 'no_comps' ? 'No comps' : key}
+              </button>
+            ))}
+          </div>
           <ul className="space-y-3">
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <li
                 key={item.id}
                 className="flex flex-col gap-3 rounded border border-rule bg-surface p-5  sm:flex-row sm:items-center sm:justify-between"
@@ -181,10 +246,21 @@ export default function WantListPage() {
                   </p>
                   <p className="mt-1 text-xs text-ink-3">Added {formatDateLabel(item.createdAt)}</p>
                   <div className="mt-4">
-                    <MarketPricingPanel wantListId={item.id} />
+                    <MarketPricingPanel
+                      wantListId={item.id}
+                      compact
+                      onPanelData={(data) => handleWantListPricingData(item, data)}
+                    />
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(item)}
+                    className="inline-flex items-center gap-1 rounded border border-rule px-4 py-2 text-sm text-ink-2 hover:bg-surface-2"
+                  >
+                    Edit
+                  </button>
                   <a
                     href={buildEbaySoldCompsUrl(item.description)}
                     target="_blank"
@@ -212,6 +288,7 @@ export default function WantListPage() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </div>
 
@@ -220,6 +297,17 @@ export default function WantListPage() {
         className="fixed inset-x-0 z-30 border-t border-rule bg-surface/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.06)] backdrop-blur bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:relative md:inset-auto md:bottom-auto md:rounded md:border md:p-6 md: lg:p-8"
       >
         <div className="mx-auto flex max-w-7xl flex-col gap-3">
+          {editingId && (
+            <div className="flex items-center justify-between rounded bg-surface-2 px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
+                Editing — <span className="text-ink">{description}</span>
+              </p>
+              <button type="button" onClick={clearForm}
+                className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-ink">
+                Cancel
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
             <input
               type="text"
@@ -227,7 +315,7 @@ export default function WantListPage() {
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add to want list..."
+              placeholder="e.g. 2024 Topps Chrome Shohei Ohtani #229"
               className="min-h-11 flex-1 rounded border border-rule bg-surface-2 px-4 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-ink focus:ring-0 focus:ring-ink"
             />
             <button
@@ -236,7 +324,7 @@ export default function WantListPage() {
               className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-ink/90 disabled:opacity-60"
             >
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Add
+              {editingId ? 'Save' : 'Add'}
             </button>
           </div>
 
@@ -254,36 +342,36 @@ export default function WantListPage() {
           {showMoreDetails ? (
             <div className="space-y-4 border-t border-rule-soft pt-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <label className="block text-sm font-medium text-ink">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                   Player
                   <input
                     type="text"
                     value={player}
                     onChange={(e) => setPlayer(e.target.value)}
-                    className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                    className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                   />
                 </label>
-                <label className="block text-sm font-medium text-ink">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                   Year
                   <input
                     type="number"
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
-                    className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                    className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                   />
                 </label>
-                <label className="block text-sm font-medium text-ink">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                   Set
                   <input
                     type="text"
                     value={setName}
                     onChange={(e) => setSetName(e.target.value)}
-                    className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                    className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                   />
                 </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-ink">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                   Target grade
                   <input
                     type="number"
@@ -292,10 +380,10 @@ export default function WantListPage() {
                     max={10}
                     value={targetGrade}
                     onChange={(e) => setTargetGrade(e.target.value)}
-                    className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                    className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                   />
                 </label>
-                <label className="block text-sm font-medium text-ink">
+                <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                   Target price ($)
                   <input
                     type="number"
@@ -303,17 +391,17 @@ export default function WantListPage() {
                     step="0.01"
                     value={targetPrice}
                     onChange={(e) => setTargetPrice(e.target.value)}
-                    className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                    className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                   />
                 </label>
               </div>
-              <label className="block text-sm font-medium text-ink">
+              <label className="block font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
                 Notes
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="mt-2 w-full rounded border border-rule px-4 py-3 text-sm outline-none focus:border-ink focus:ring-0 focus:ring-ink"
+                  className="mt-1.5 w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink"
                 />
               </label>
             </div>

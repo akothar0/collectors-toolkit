@@ -16,6 +16,8 @@ export type SliceMarketCacheInput = {
   grade?: number | null;
   parallelId?: string | null;
   isGraded?: boolean;
+  /** auto = tier ladder (default refresh); manual = user filters only, no walk-down */
+  sliceMode?: 'auto' | 'manual';
 };
 
 export type SliceTierResult = {
@@ -174,8 +176,26 @@ function pickDisplayTier(
   return { tier: 'all_conditions', result: fallback };
 }
 
+function pickManualDisplayTier(
+  pricingResponse: PricingResponse,
+  input: SliceMarketCacheInput
+): SliceTierResult {
+  if (!input.isGraded) {
+    const result = sliceTier(pricingResponse, 'all_conditions', input);
+    return { tier: 'all_conditions', result };
+  }
+
+  const hasParallel = Boolean(input.parallelId);
+  const tier: CompsTierId = hasParallel ? 'exact' : 'exact_grade_any_parallel';
+  const result = sliceTier(pricingResponse, tier, input);
+  return { tier, result };
+}
+
 export function sliceMarketCache(input: SliceMarketCacheInput): SliceMarketCacheOutput {
-  const display = pickDisplayTier(input.pricingResponse, input);
+  const display =
+    input.sliceMode === 'manual'
+      ? pickManualDisplayTier(input.pricingResponse, input)
+      : pickDisplayTier(input.pricingResponse, input);
 
   let strict: SliceTierResult | null = null;
   if (input.isGraded) {
@@ -183,12 +203,15 @@ export function sliceMarketCache(input: SliceMarketCacheInput): SliceMarketCache
     strict = { tier: 'exact', result: exact };
   }
 
-  const scopeNote = buildScopeNote({
-    tier: display.tier,
-    gradingCompany: input.gradingCompany,
-    grade: input.grade,
-    isGraded: input.isGraded,
-  });
+  const scopeNote =
+    input.sliceMode === 'manual' && display.result.sampleSize === 0
+      ? 'No sales match your selected filters in the last 90 days.'
+      : buildScopeNote({
+          tier: display.tier,
+          gradingCompany: input.gradingCompany,
+          grade: input.grade,
+          isGraded: input.isGraded,
+        });
 
   return {
     display,

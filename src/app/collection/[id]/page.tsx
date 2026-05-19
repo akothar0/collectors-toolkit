@@ -13,7 +13,8 @@ import { Slab, type SlabHolding } from '@/components/Slab';
 import { detailToFormValues, formValuesToPayload, type CollectionCardDetail } from '@/lib/collection-detail';
 import { makePendingCollectionPhotos, type PendingCollectionPhoto, uploadCollectionPhotoFiles } from '@/lib/collection-photo-client';
 import { displayPlayer, displaySetName, formatDateLabel, formatGainLoss, formatGradeBadge, formatPrice } from '@/lib/collection-presenter';
-import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
+import { MarketCompsSection } from '@/components/pricing/MarketCompsSection';
+import { PriceHistorySparkline } from '@/components/pricing/PriceHistorySparkline';
 import { getCertUrl } from '@/lib/cert-number';
 import { readJsonResponse } from '@/lib/http-json';
 
@@ -231,7 +232,7 @@ export default function CollectionCardDetailPage() {
                   return cur.filter(p => p.id !== id);
                 })}
                 disabled={photoUploading}
-                helperText="Swipe through saved photos above. Add more or remove shots you no longer want."
+                helperText={card.photos.length > 0 ? "Swipe through saved photos above. Add more or remove shots you no longer want." : "Add front, back, and detail shots."}
               />
               {pendingPhotos.length > 0 && (
                 <button type="button" onClick={handleAddPhotos} disabled={photoUploading}
@@ -317,8 +318,21 @@ export default function CollectionCardDetailPage() {
               )}
             </div>
 
-            {/* Market pricing (pricing workstream) */}
-            <MarketPricingPanel collectionCardId={card.id} onPricingUpdated={loadCard} onRequestEdit={() => setEditing(true)} />
+            <MarketCompsSection
+              collectionCardId={card.id}
+              slabDefaults={{
+                gradingCompany: card.gradingCompany,
+                grade: card.grade,
+              }}
+              onPricingUpdated={loadCard}
+              onRequestEdit={() => setEditing(true)}
+            />
+
+            <PriceHistorySparkline
+              collectionCardId={card.id}
+              purchaseDate={card.purchaseDate}
+              purchasePrice={card.purchasePrice}
+            />
 
             {/* Notes */}
             <label className="block">

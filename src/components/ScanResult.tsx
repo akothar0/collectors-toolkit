@@ -6,6 +6,7 @@ import type { Route } from 'next';
 import { BadgeCheck, ExternalLink, Loader2, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
+import { CardInsight } from '@/components/CardInsight';
 import { Eyebrow, Rule } from '@/components/editorial';
 import { readJsonResponse } from '@/lib/http-json';
 import { getCertUrl } from '@/lib/cert-number';
@@ -200,8 +201,24 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
             />
           )}
 
+          {result.certLookupSuccess && result.cardPlayer && (
+            <CardInsight
+              player={result.cardPlayer}
+              year={result.cardYear ?? null}
+              setName={result.cardSet ?? null}
+              cardNumber={result.cardNumber ?? null}
+              parallel={result.cardParallel ?? null}
+              gradingCompany={result.gradingCompany ?? null}
+              officialGrade={result.officialGrade ?? null}
+              gradeDescription={result.gradeDescription ?? null}
+              popAtGrade={result.popAtGrade ?? null}
+              popHigher={result.popHigher ?? null}
+              cardId={result.cardId ?? null}
+            />
+          )}
+
           {result.collectionCardId && (
-            <MarketPricingPanel collectionCardId={result.collectionCardId} />
+            <MarketPricingPanel collectionCardId={result.collectionCardId} compact />
           )}
 
           {alreadySaved && !readOnly && (
