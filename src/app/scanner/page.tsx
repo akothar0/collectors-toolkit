@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, History, Loader2, ScanLine, Upload } from 'lucide-react';
+import { Check, ChevronDown, History, Loader2, ScanLine } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -173,7 +173,7 @@ export default function ScannerPage() {
                   disabled={!selectedFile || isScanning}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
                   Scan Card
                 </button>
                 <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">

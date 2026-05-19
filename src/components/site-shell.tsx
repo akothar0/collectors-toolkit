@@ -40,8 +40,8 @@ const navItems: NavItem[] = [
   { href: '/collection', label: 'Collection', icon: <LibraryBig className="h-4 w-4" />, bottomTab: true },
   { href: '/wantlist', label: 'Want List', icon: <Heart className="h-4 w-4" />, bottomTab: true },
   { href: '/portfolio', label: 'Portfolio', icon: <ChartColumnIncreasing className="h-4 w-4" />, bottomTab: true },
-  { href: '/import', label: 'Import', icon: <Import className="h-4 w-4" />, bottomTab: true },
-  { href: '/sets', label: 'Sets', icon: <Layers className="h-4 w-4" /> },
+  { href: '/import', label: 'Import', icon: <Import className="h-4 w-4" /> },
+  { href: '/sets', label: 'Sets', icon: <Layers className="h-4 w-4" />, bottomTab: true },
 ];
 
 const drawerExtras: NavItem[] = [{ href: '/', label: 'Dashboard', icon: <Home className="h-4 w-4" /> }];

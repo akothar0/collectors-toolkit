@@ -49,9 +49,6 @@ export default async function Page() {
     return (
       <section className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div className="space-y-6">
-          <span className="inline-flex rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700">
-            Week 1 scaffold
-          </span>
           <div className="space-y-4">
             <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-5xl font-semibold tracking-tight text-slate-950 md:text-6xl">
               Scan. Grade. Track.
@@ -105,9 +102,6 @@ export default async function Page() {
     return (
       <section className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div className="space-y-6">
-          <span className="inline-flex rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700">
-            Week 1 scaffold
-          </span>
           <div className="space-y-4">
             <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-5xl font-semibold tracking-tight text-slate-950 md:text-6xl">
               Scan. Grade. Track.

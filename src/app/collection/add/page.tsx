@@ -36,6 +36,7 @@ function AddCardForm() {
   const queryPlayer = searchParams.get('player') ?? '';
   const queryYear = searchParams.get('year') ?? '';
   const querySet = searchParams.get('setName') ?? searchParams.get('set') ?? '';
+  const queryCert = searchParams.get('cert') ?? '';
 
   const [player, setPlayer] = useState(queryPlayer);
   const [cardId, setCardId] = useState<string | null>(null);
@@ -107,6 +108,16 @@ function AddCardForm() {
       cancelled = true;
     };
   }, [sessionId, queryGrade, queryCompany]);
+
+  useEffect(() => {
+    if (sessionId) return;
+    if (queryGrade || queryCompany || queryCert) {
+      setConditionType('graded');
+      if (queryGrade) setGrade(Number(queryGrade));
+      if (queryCompany) setGradingCompany(queryCompany);
+      if (queryCert) setCertNumber(queryCert);
+    }
+  }, [sessionId, queryGrade, queryCompany, queryCert]);
 
   useEffect(() => {
     return () => {

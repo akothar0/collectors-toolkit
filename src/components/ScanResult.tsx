@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { BadgeCheck, ExternalLink, Loader2, RotateCcw, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { readJsonResponse } from '@/lib/http-json';
@@ -81,6 +82,18 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
   const title = useMemo(() => getVerifiedTitle(result), [result]);
   const subtitle = useMemo(() => getVerifiedSubtitle(result), [result]);
   const showCertPrompt = useMemo(() => needsCertConfirmation(result), [result]);
+  const collectionAddHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (result.cardPlayer) params.set('player', result.cardPlayer);
+    if (result.cardYear) params.set('year', String(result.cardYear));
+    const setVal = result.cardSet ?? result.cardManufacturer;
+    if (setVal) params.set('set', setVal);
+    if (result.officialGrade != null) params.set('grade', String(result.officialGrade));
+    if (result.gradingCompany) params.set('company', result.gradingCompany);
+    if (result.certNumber) params.set('cert', result.certNumber);
+    const qs = params.toString();
+    return `/collection/add${qs ? `?${qs}` : ''}`;
+  }, [result]);
   const certUrl = useMemo(
     () => getCertUrl(result.gradingCompany, result.certNumber),
     [result.gradingCompany, result.certNumber]
@@ -276,6 +289,27 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
           ) : null}
         </div>
       </ScanGrid>
+
+      {!readOnly ? (
+        <div className="flex flex-col gap-3 border-t border-slate-100 p-6 sm:flex-row">
+          <Link
+            href={collectionAddHref as Route}
+            className="inline-flex flex-1 items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+          >
+            Add to Collection
+          </Link>
+          {onTryAgain ? (
+            <button
+              type="button"
+              onClick={onTryAgain}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Scan Another
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {saveOverlayOpen ? (
         <SaveOverlay
