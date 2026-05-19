@@ -20,8 +20,12 @@ Next.js 15 App Router app for sports card collectors: graded slab scanner, raw-c
 | Storage | Bucket `card-images`; path `${userId}/${Date.now()}-${uuid}.${ext}` via `@/lib/card-image-storage` |
 | OpenAI | `import { openai } from '@/lib/openai'` |
 | Types | Define in `@/lib/[feature].ts`; routes stay thin |
-| UI | Tailwind; `site-shell.tsx` layout; `rounded-3xl`, `border-slate-200`, `text-brand-600` |
-| Images | `CardImage` for Next/Image; legacy uploads use `eslint-disable` on `<img>` where needed |
+| UI | Tailwind editorial system; `site-shell.tsx` layout. Tokens: `bg-paper/bg-surface`, `text-ink/text-ink-2/text-ink-3`, `border-rule`, `bg-accent`. **Never** use `slate-*`, `brand-6*`, or `ash-*` tokens. |
+| Headings | `font-serif italic text-[Npx] leading-none tracking-tight text-ink` |
+| Eyebrows | `font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3` |
+| Buttons | Primary: `rounded bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-ink/90`; secondary: `rounded border border-rule px-4 py-2 text-sm text-ink-2 hover:bg-surface-2` |
+| Components | `Slab` (`src/components/Slab.tsx`) — CSS-only graded card placeholder (PSA/BGS/SGC/Raw). Editorial atoms in `src/components/editorial.tsx`: `Eyebrow`, `Rule`, `StatStrip`/`StatCell`, `Masthead`, `Button`, `PageFooter`. Utility: `cn()` from `@/lib/cn` |
+| Images | `CardImage` for Next/Image; legacy uploads use `eslint-disable` on `<img>` where needed. `ImageUpload.tsx` is intentionally dark (lives inside dark viewfinder) — do not re-style. |
 
 ## Security
 
@@ -69,7 +73,7 @@ npx supabase db push
 | Portfolio | `@/lib/portfolio.ts`, `portfolio-server.ts`, `GET /api/portfolio` |
 | Sets | `@/lib/sets.ts`, `src/app/api/sets/` |
 | Want list | `@/lib/wantlist.ts`, `src/app/api/wantlist/` |
-| CardSight pricing | `@/lib/cardsight/*`, `@/lib/pricing/*`, `src/app/api/pricing/` |
+| CardSight pricing | `@/lib/cardsight/*`, `@/lib/pricing/*`, `src/app/api/pricing/`; `MarketPricingPanel` in `src/components/pricing/` |
 
 ## Routes (App Router)
 
@@ -103,8 +107,18 @@ Add tests in `tests/` for non-trivial pure logic (parsers, presenters, query bui
 - Do not use CardGrade.io for raw grading (GPT-4o only).
 - Do not auto-save import rows without user review.
 - Do not remove legacy `front_image_url` / `back_image_url` without a migration plan (gallery syncs from them).
+- Do not modify `src/lib/pricing/*`, `src/lib/cardsight/*`, `src/app/api/pricing/*`, or `MarketPricingPanel.tsx` when doing UI/design work — the pricing system owns these files.
+- Do not modify `src/lib/collection-rows.ts`, `src/lib/collection.ts`, `src/lib/portfolio-server.ts`, or `src/lib/portfolio.ts` when doing UI/design work.
 - Minimize scope: match surrounding patterns; avoid drive-by refactors.
+
+## Design system reference
+
+`design/` folder at the repo root contains:
+- `design/handoff/` — drop-in reference files (tailwind.config, layout, globals.css, key components)
+- `design/prototypes/` — HTML and JSX prototypes for all major surfaces
+
+When in doubt about a token or pattern, check `design/handoff/tailwind.config.ts` and `design/handoff/components/`.
 
 ## Implementation status (MVP)
 
-Weeks 1–8 features are **implemented** in code. V2 items (live comps, price alerts, QR cross-device, TCG) are in the product spec only — do not build unless asked.
+All features are **implemented and live** on `main`. V2 items (live comps, price alerts, QR cross-device, TCG) are in the product spec only — do not build unless asked.

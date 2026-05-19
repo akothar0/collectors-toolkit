@@ -43,7 +43,8 @@ src/
 ├── components/             # Shared UI (site-shell, forms, results)
 └── lib/                    # Business logic (no React in lib/)
 tests/                      # node:test unit tests
-supabase/migrations/        # Ordered SQL migrations (001–007)
+supabase/migrations/        # Ordered SQL migrations (001–012)
+design/                     # Editorial design system reference (handoff + prototypes)
 ```
 
 ## Getting started
@@ -70,7 +71,7 @@ Apply database migrations:
 
 ```bash
 npx supabase db push
-# Or run SQL files in supabase/migrations/ in order (001–007)
+# Or run SQL files in supabase/migrations/ in order (001–012)
 ```
 
 | Migration | Purpose |
@@ -82,6 +83,11 @@ npx supabase db push
 | `005_card_images_storage.sql` | Card image bucket |
 | `006_collection_card_images.sql` | Photo gallery table + backfill |
 | `007_rls_sets.sql` | RLS for set tracker tables |
+| `008_cardsight_pricing.sql` | Price snapshots + collection market columns |
+| `009_rls_pricing.sql` | Deny-all RLS on pricing tables |
+| `010_cardsight_market_cache.sql` | Global CardSight pricing cache |
+| `011_cardsight_grade_map.sql` | Persisted grade UUID lookup |
+| `012_rls_market_cache.sql` | Deny-all RLS on market cache tables |
 
 Run locally:
 
@@ -106,6 +112,8 @@ See [`.env.example`](.env.example):
 | `PSA_API_TOKEN` | PSA cert API |
 | `CARDGRADE_API_TOKEN` | Optional cert fallback |
 | `NEXT_PUBLIC_APP_URL` | App URL for bookmarklet redirects |
+| `CARDSIGHT_API_KEY` | CardSight market pricing API |
+| `CARDSIGHT_BASE_URL` | CardSight API base URL |
 
 ## Security
 
@@ -117,7 +125,7 @@ See [`.env.example`](.env.example):
 
 1. Push to GitHub and import the repo in Vercel.
 2. Add all environment variables from `.env.example`.
-3. Run Supabase migrations against production (`001`–`007`).
+3. Run Supabase migrations against production (`001`–`012`).
 4. Deploy; smoke test: sign up → scan → grade → add card → upload gallery photos → import → portfolio → want list → set tracker.
 
 ## Scripts
