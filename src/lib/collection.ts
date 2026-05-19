@@ -51,6 +51,8 @@ export type CollectionCardItem = {
   purchasePrice: number | null;
   purchaseDate: string | null;
   currentValue: number | null;
+  valueSource?: string | null;
+  marketPriceSampleSize?: number | null;
   createdAt: string;
 };
 

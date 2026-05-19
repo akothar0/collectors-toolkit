@@ -3,7 +3,8 @@ import { buildPortfolioSummary, type PortfolioSummary } from '@/lib/portfolio';
 import { createServiceClient } from '@/lib/supabase';
 
 const COLLECTION_SELECT = `id, front_image_url, override_player, override_year, override_set_name, override_parallel, override_card_number,
-  sport, condition_type, grade, grading_company, cert_number, purchase_price, purchase_date, current_value, created_at,
+  sport, condition_type, grade, grading_company, cert_number, purchase_price, purchase_date, current_value, value_source,
+  market_price_sample_size, created_at,
   cards ( player, year, set_name, card_number, parallel, sport )`;
 
 export async function fetchPortfolioSummary(

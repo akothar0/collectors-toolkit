@@ -4,7 +4,9 @@ Last updated: 2026-05-18
 
 ## 1. Executive Summary
 
-Collectors Toolkit should add a live-pricing subsystem that surfaces recent eBay sold comps across collection detail, portfolio, want list, and scanner flows without blocking the core app on one vendor. The safest v1 architecture is a hybrid model: a nightly Railway worker refreshes cached market data for portfolio, collection, and want list surfaces, while scanner results may trigger an on-demand comp lookup because they need immediate output. Official eBay sold-history access is the main dependency risk: Browse API access is relatively easy once the developer account is approved, but official sold-comp access is materially harder, so v1 should be built around a provider adapter with eBay-first and fallback-provider support.
+Collectors Toolkit uses **CardSight** as the sole sold-comps provider for v1.
+
+**Scheduled refresh (optional):** Set `PRICING_CRON_SECRET` (or Vercel `CRON_SECRET`) and deploy with [`vercel.json`](../vercel.json) cron (`0 6 * * *`). The job refreshes up to `PRICING_CRON_CARD_LIMIT` (default 40) owned cards per run. On-demand pricing does not require cron. CardSight catalog UUIDs are stored on `cards.source_id` when `cards.source = 'cardsight'`. The app surfaces recent sold comps across collection detail, portfolio, want list, and scanner flows via a hybrid cache model: a scheduled cron job refreshes cached market data for owned collection cards, while collection detail and scanner flows may trigger on-demand lookups when the cache is stale. Server routes call the CardSight REST API (`CARDSIGHTAI_API_KEY`); end users never access MCP or the API key directly.
 
 ## 2. Data Sources Comparison
 
@@ -295,7 +297,7 @@ Implement an internal provider abstraction:
 
 ```ts
 type PriceProvider = {
-  name: 'ebay_marketplace_insights' | 'ebay_legacy_completed' | 'soldcomps' | 'sportscardspro';
+  name: 'cardsight';
   fetchComparables(input: PriceQuery): Promise<NormalizedPriceResult>;
 };
 ```

@@ -42,6 +42,11 @@ Apply in order under `supabase/migrations/`:
 | `005_card_images_storage.sql` | Public `card-images` bucket |
 | `006_collection_card_images.sql` | Multi-photo gallery + backfill from front/back URLs |
 | `007_rls_sets.sql` | RLS on `card_sets`, `collection_set_progress` |
+| `008_cardsight_pricing.sql` | Price snapshots/comparables + collection market columns |
+| `009_rls_pricing.sql` | Deny-all RLS on pricing tables |
+| `010_cardsight_market_cache.sql` | Global CardSight pricing cache + snapshot scope columns |
+| `011_cardsight_grade_map.sql` | Persisted grade UUID lookup |
+| `012_rls_market_cache.sql` | Deny-all RLS on market cache tables |
 
 ```bash
 npx supabase db push
@@ -64,6 +69,7 @@ npx supabase db push
 | Portfolio | `@/lib/portfolio.ts`, `portfolio-server.ts`, `GET /api/portfolio` |
 | Sets | `@/lib/sets.ts`, `src/app/api/sets/` |
 | Want list | `@/lib/wantlist.ts`, `src/app/api/wantlist/` |
+| CardSight pricing | `@/lib/cardsight/*`, `@/lib/pricing/*`, `src/app/api/pricing/` |
 
 ## Routes (App Router)
 
