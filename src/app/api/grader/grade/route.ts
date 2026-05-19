@@ -1,4 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { uploadPublicCardImage } from '@/lib/card-image-storage';
 import { GRADE_LIMIT, type GradeResult } from '@/lib/grader';
 import {
   GRADING_SYSTEM_PROMPT,
@@ -16,35 +17,15 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-async function uploadGraderImage(userId: string, imageFile: File) {
-  const supabase = createServiceClient();
-  const extension = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const bytes = await imageFile.arrayBuffer();
-
-  const { error } = await supabase.storage
-    .from('card-images')
-    .upload(path, bytes, {
-      contentType: imageFile.type || 'image/jpeg',
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`Unable to upload image: ${error.message}`);
-  }
-
-  const { data } = supabase.storage.from('card-images').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-async function resolveImageUrl(userId: string, file: File): Promise<string> {
+async function resolveImageUrls(userId: string, file: File): Promise<{ modelInputUrl: string; persistedUrl: string | null }> {
   try {
-    return await uploadGraderImage(userId, file);
+    const persistedUrl = await uploadPublicCardImage(userId, file);
+    return { modelInputUrl: persistedUrl, persistedUrl };
   } catch (error) {
     console.error('Unable to upload grader image to Supabase storage', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return fileToDataUrl(file);
+    return { modelInputUrl: await fileToDataUrl(file), persistedUrl: null };
   }
 }
 
@@ -107,11 +88,12 @@ async function handleGradeRequest(req: Request) {
   if (cornerImage instanceof File && cornerImage.size > 0) imageFiles.push(cornerImage);
 
   const imageCount = imageFiles.length;
-  const imageUrls = await Promise.all(imageFiles.map((file) => resolveImageUrl(supabaseUserId, file)));
+  const imageUploads = await Promise.all(imageFiles.map((file) => resolveImageUrls(supabaseUserId, file)));
+  const imageUrls = imageUploads.map((upload) => upload.modelInputUrl);
 
-  const frontImageUrl = imageUrls[0];
+  const frontImageUrl = imageUploads[0]?.persistedUrl ?? null;
   const backImageUrl =
-    backImage instanceof File && backImage.size > 0 ? (imageUrls[1] ?? null) : null;
+    backImage instanceof File && backImage.size > 0 ? (imageUploads[1]?.persistedUrl ?? null) : null;
 
   const messages = [
     { role: 'system' as const, content: GRADING_SYSTEM_PROMPT },

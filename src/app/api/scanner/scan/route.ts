@@ -1,5 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { findOrCreateCard } from '@/lib/card-catalog';
+import { uploadPublicCardImage } from '@/lib/card-image-storage';
 import type { CertLookupResult } from '@/lib/cert-lookup/types';
 import { lookupCertWithStatus, normalizeLookupGradingCompany } from '@/lib/cert-lookup/index';
 import { isPlausibleCertNumber, normalizeCertNumber } from '@/lib/cert-number';
@@ -16,27 +17,6 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-async function uploadScanImage(userId: string, imageFile: File) {
-  const supabase = createServiceClient();
-  const extension = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const bytes = await imageFile.arrayBuffer();
-
-  const { error } = await supabase.storage
-    .from('card-images')
-    .upload(path, bytes, {
-      contentType: imageFile.type || 'image/jpeg',
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`Unable to upload image: ${error.message}`);
-  }
-
-  const { data } = supabase.storage.from('card-images').getPublicUrl(path);
-  return data.publicUrl;
-}
 
 type ScanRowPayload = Partial<ScannerResult> & {
   imageUrl: string;
@@ -258,7 +238,8 @@ async function handleScanRequest(req: Request) {
     typeof manualGradingCompanyField === 'string' && manualGradingCompanyField.trim()
       ? normalizeGradingCompany(manualGradingCompanyField)
       : null;
-  const fallbackImageUrl = typeof imageUrlFromClient === 'string' && imageUrlFromClient.trim() ? imageUrlFromClient.trim() : '';
+  const fallbackImageUrl =
+    typeof imageUrlFromClient === 'string' ? resolveStoredScanImageUrl(imageUrlFromClient) : '';
 
   let uploadedImageUrl = fallbackImageUrl || '';
   let openAiImageUrl = fallbackImageUrl || '';
@@ -269,7 +250,7 @@ async function handleScanRequest(req: Request) {
 
   if (imageField instanceof File && imageField.size > 0) {
     try {
-      uploadedImageUrl = await uploadScanImage(supabaseUserId, imageField);
+      uploadedImageUrl = await uploadPublicCardImage(supabaseUserId, imageField);
       openAiImageUrl = uploadedImageUrl;
     } catch (error) {
       console.error('Unable to upload image to Supabase storage', {
@@ -279,7 +260,7 @@ async function handleScanRequest(req: Request) {
       openAiImageUrl = await fileToDataUrl(imageField);
     }
 
-    uploadedImageUrl = resolveStoredScanImageUrl(uploadedImageUrl, fallbackImageUrl);
+    uploadedImageUrl = resolveStoredScanImageUrl(uploadedImageUrl);
 
     try {
       const parsed = await readSlabLabel(openAiImageUrl);

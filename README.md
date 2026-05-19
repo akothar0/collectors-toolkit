@@ -123,7 +123,7 @@ flowchart TB
 ## Scanner flow
 
 1. **Upload** — User submits a slab image (or retries with manual cert + grader).
-2. **Persist image** — File uploaded to `card-images/{userId}/{timestamp}-{uuid}.jpg` (or client preview URL if upload fails).
+2. **Persist image** — File uploaded to `card-images/{userId}/{timestamp}-{uuid}.jpg`; if storage upload fails, OCR still runs from an inline data URL but no non-durable image URL is persisted.
 3. **OCR** — `readSlabLabel()` extracts `certNumber` and `gradingCompany` (minimal schema: two fields only).
 4. **Insert scan row** — Every attempt is written to `graded_scans` for history.
 5. **Cert lookup** — If cert is plausible and grader is not CGC-only:
@@ -134,7 +134,7 @@ flowchart TB
 7. **Response** — `ScannerResult` JSON to the client (includes `savedToCollection` if already linked).
 8. **Save (optional)** — User opens overlay → `POST /api/collection` with purchase fields.
 
-**Manual retry:** `ScanResult` sends `manualCertNumber` + `manualGradingCompany` + existing `imageUrl` without re-uploading the photo.
+**Manual retry:** `ScanResult` sends `manualCertNumber` + `manualGradingCompany` + existing stored `imageUrl` without re-uploading the photo.
 
 ---
 
@@ -232,7 +232,9 @@ supabase db push
 
 ### Storage
 
-Create a **public** bucket named `card-images` in Supabase Storage (or configure policies for signed URLs if you prefer private objects).
+`supabase db push` provisions both storage buckets used by the app:
+- `card-images` for public card and slab photos
+- `import-files` for private import uploads accessed via signed URLs
 
 ---
 
@@ -306,9 +308,8 @@ Fill in all required variables (see [Environment variables](#environment-variabl
 ### 3. Database and storage
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/001_initial_schema.sql`.
-3. Create Storage bucket `card-images`.
-4. Copy project URL and keys into `.env.local`.
+2. Run `supabase db push` to apply all migrations, including storage buckets.
+3. Copy project URL and keys into `.env.local`.
 
 ### 4. Clerk
 

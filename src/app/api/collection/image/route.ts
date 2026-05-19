@@ -1,31 +1,10 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { isCardImageStorageConfigurationError, uploadPublicCardImage } from '@/lib/card-image-storage';
 import { isConfigurationError, scannerErrorResponse } from '@/lib/scanner-api';
-import { createServiceClient } from '@/lib/supabase';
 import { getOrCreateUserId } from '@/lib/users';
 
 export const runtime = 'nodejs';
-
-async function uploadCollectionImage(userId: string, imageFile: File) {
-  const supabase = createServiceClient();
-  const extension = imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const bytes = await imageFile.arrayBuffer();
-
-  const { error } = await supabase.storage
-    .from('card-images')
-    .upload(path, bytes, {
-      contentType: imageFile.type || 'image/jpeg',
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`Unable to upload image: ${error.message}`);
-  }
-
-  const { data } = supabase.storage.from('card-images').getPublicUrl(path);
-  return data.publicUrl;
-}
 
 export async function POST(req: Request) {
   try {
@@ -48,11 +27,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please upload an image file.' }, { status: 400 });
     }
 
-    const imageUrl = await uploadCollectionImage(supabaseUserId, image);
+    const imageUrl = await uploadPublicCardImage(supabaseUserId, image);
     return NextResponse.json({ imageUrl });
   } catch (error) {
-    if (isConfigurationError(error)) {
-      return scannerErrorResponse('Image upload is unavailable until Supabase is configured.', 503);
+    if (isConfigurationError(error) || isCardImageStorageConfigurationError(error)) {
+      return scannerErrorResponse(
+        'Image upload is unavailable until Supabase storage is configured.',
+        503
+      );
     }
 
     return scannerErrorResponse(

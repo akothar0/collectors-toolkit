@@ -3,7 +3,7 @@ export type GradingCompanyPrediction = 'PSA' | 'BGS' | 'CGC';
 
 export type GradeResult = {
   sessionId: string;
-  frontImageUrl: string;
+  frontImageUrl: string | null;
   backImageUrl: string | null;
   imageCount: number;
   overallGrade: number;

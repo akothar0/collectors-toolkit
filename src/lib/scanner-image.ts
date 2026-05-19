@@ -6,6 +6,14 @@ export function fileToDataUrl(file: File) {
   });
 }
 
-export function resolveStoredScanImageUrl(uploadedImageUrl: string | null | undefined, fallbackImageUrl: string | null | undefined) {
-  return uploadedImageUrl?.trim() || fallbackImageUrl?.trim() || '';
+export function isPersistableImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl?.trim()) {
+    return false;
+  }
+
+  return /^https?:\/\//i.test(imageUrl.trim());
+}
+
+export function resolveStoredScanImageUrl(uploadedImageUrl: string | null | undefined) {
+  return isPersistableImageUrl(uploadedImageUrl) ? uploadedImageUrl.trim() : '';
 }
