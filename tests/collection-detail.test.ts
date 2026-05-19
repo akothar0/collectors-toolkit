@@ -11,6 +11,7 @@ import {
 test('COLLECTION_CARD_DETAIL_SELECT disambiguates import_items FK', () => {
   assert.match(COLLECTION_CARD_DETAIL_SELECT, /import_items!import_item_id/);
   assert.doesNotMatch(COLLECTION_CARD_DETAIL_SELECT, /import_items \(/);
+  assert.doesNotMatch(COLLECTION_CARD_DETAIL_SELECT, /collection_card_images/);
 });
 
 test('mapCollectionDetailRow maps catalog overrides and provenance', () => {
@@ -75,6 +76,20 @@ test('mapCollectionDetailRow maps catalog overrides and provenance', () => {
       created_at: '2024-01-04T00:00:00Z',
       raw_source: 'Card Ladder CSV',
     },
+    collection_card_images: [
+      {
+        id: 'photo-2',
+        image_url: 'https://example.com/back.jpg',
+        position: 1,
+        created_at: '2024-01-02T00:00:00Z',
+      },
+      {
+        id: 'photo-1',
+        image_url: 'https://example.com/front.jpg',
+        position: 0,
+        created_at: '2024-01-01T00:00:00Z',
+      },
+    ],
   };
 
   const detail = mapCollectionDetailRow(row);
@@ -83,6 +98,10 @@ test('mapCollectionDetailRow maps catalog overrides and provenance', () => {
   assert.equal(detail.player, 'Override Player');
   assert.equal(detail.year, 2020);
   assert.equal(detail.setName, 'Topps');
+  assert.equal(detail.frontImageUrl, 'https://example.com/front.jpg');
+  assert.equal(detail.photos.length, 2);
+  assert.equal(detail.photos[0]?.id, 'photo-1');
+  assert.equal(detail.photos[1]?.id, 'photo-2');
   assert.equal(detail.catalog?.player, 'Catalog Player');
   assert.equal(detail.scanSession?.id, 'scan-1');
   assert.equal(detail.gradeSession?.predictedGrade, 9.5);
@@ -127,6 +146,7 @@ test('mapCollectionDetailRow normalizes array joins from PostgREST', () => {
     graded_scans: [],
     raw_grade_sessions: [],
     import_items: [],
+    collection_card_images: [],
   });
 
   assert.equal(detail.catalog, null);
@@ -141,6 +161,7 @@ function sampleDetail(overrides: Partial<CollectionCardDetail> = {}): Collection
     cardId: 'card-1',
     frontImageUrl: null,
     backImageUrl: null,
+    photos: [],
     player: 'Mike Trout',
     year: 2011,
     setName: 'Topps Update',
@@ -188,7 +209,14 @@ function sampleDetail(overrides: Partial<CollectionCardDetail> = {}): Collection
 }
 
 test('detailToFormValues and formValuesToPayload round-trip graded card', () => {
-  const detail = sampleDetail();
+  const detail = sampleDetail({
+    photos: [
+      { id: 'photo-1', imageUrl: 'https://example.com/front.jpg', position: 0 },
+      { id: 'photo-2', imageUrl: 'https://example.com/back.jpg', position: 1 },
+    ],
+    frontImageUrl: 'https://example.com/front.jpg',
+    backImageUrl: 'https://example.com/back.jpg',
+  });
   const form = detailToFormValues(detail);
   const payload = formValuesToPayload(form);
 
@@ -198,6 +226,10 @@ test('detailToFormValues and formValuesToPayload round-trip graded card', () => 
   assert.equal(payload.gradingCompany, 'PSA');
   assert.equal(payload.grade, 10);
   assert.equal(payload.purchasePrice, 500);
+  assert.deepEqual(payload.photoUrls, [
+    'https://example.com/front.jpg',
+    'https://example.com/back.jpg',
+  ]);
 });
 
 test('detailToFormValues maps unknown grading company to Other', () => {

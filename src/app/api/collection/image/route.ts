@@ -1,6 +1,10 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { isCardImageStorageConfigurationError, uploadPublicCardImage } from '@/lib/card-image-storage';
+import {
+  isCardImageStorageConfigurationError,
+  uploadPublicCardImage,
+  uploadPublicCardImages,
+} from '@/lib/card-image-storage';
 import { isConfigurationError, scannerErrorResponse } from '@/lib/scanner-api';
 import { getOrCreateUserId } from '@/lib/users';
 
@@ -22,6 +26,12 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const image = formData.get('image');
+    const images = formData.getAll('images').filter((item): item is File => item instanceof File && item.size > 0);
+
+    if (images.length > 0) {
+      const imageUrls = await uploadPublicCardImages(supabaseUserId, images);
+      return NextResponse.json({ imageUrls, imageUrl: imageUrls[0] ?? null });
+    }
 
     if (!(image instanceof File) || image.size === 0) {
       return NextResponse.json({ error: 'Please upload an image file.' }, { status: 400 });

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import type { Route } from 'next';
 import { Check, Gauge, Loader2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { GradeResult } from '@/components/GradeResult';
@@ -198,9 +200,17 @@ export default function GraderPage() {
       <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft">
         <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6 p-6 md:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">
-              <Gauge className="h-3.5 w-3.5" />
-              Raw Card Grader
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">
+                <Gauge className="h-3.5 w-3.5" />
+                Raw Card Grader
+              </div>
+              <Link
+                href={'/grader/history' as Route}
+                className="text-sm font-medium text-brand-600 hover:underline"
+              >
+                View grade history
+              </Link>
             </div>
 
             <div className="space-y-4">

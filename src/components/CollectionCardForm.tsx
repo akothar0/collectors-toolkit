@@ -1,19 +1,26 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ButtonGroup } from '@/components/ButtonGroup';
+import { CollectionPhotoPicker } from '@/components/CollectionPhotoPicker';
 import { GradeChips } from '@/components/GradeChips';
-import { ImageUpload } from '@/components/ImageUpload';
 import { PlayerAutocomplete } from '@/components/PlayerAutocomplete';
 import { GRADING_COMPANIES, PURCHASE_SOURCES, SPORTS } from '@/lib/collection';
+import {
+  makePendingCollectionPhotos,
+  type PendingCollectionPhoto,
+} from '@/lib/collection-photo-client';
 import type { CardSearchResult } from '@/lib/collection';
 import type { CollectionFormValues } from '@/lib/collection-detail';
 
 type CollectionCardFormProps = {
   initialValues: CollectionFormValues;
-  onSubmit: (values: CollectionFormValues, photoFile: File | null) => Promise<void>;
+  onSubmit: (
+    values: CollectionFormValues,
+    photoFiles: File[],
+    removedPhotoIds: string[]
+  ) => Promise<void>;
   onCancel?: () => void;
   submitLabel: string;
   loading?: boolean;
@@ -29,14 +36,30 @@ export function CollectionCardForm({
   error = '',
 }: CollectionCardFormProps) {
   const [values, setValues] = useState(initialValues);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [uploadKey, setUploadKey] = useState(0);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingCollectionPhoto[]>([]);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
+  const pendingPhotosRef = useRef<PendingCollectionPhoto[]>([]);
+
+  pendingPhotosRef.current = pendingPhotos;
 
   useEffect(() => {
     setValues(initialValues);
-    setPhotoFile(null);
-    setUploadKey((k) => k + 1);
+    setRemovedPhotoIds([]);
+    setPendingPhotos((current) => {
+      for (const photo of current) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+      return [];
+    });
   }, [initialValues]);
+
+  useEffect(() => {
+    return () => {
+      for (const photo of pendingPhotosRef.current) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+    };
+  }, []);
 
   function update<K extends keyof CollectionFormValues>(key: K, value: CollectionFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -55,7 +78,11 @@ export function CollectionCardForm({
       return;
     }
 
-    await onSubmit(values, photoFile);
+    await onSubmit(
+      values,
+      pendingPhotos.map((photo) => photo.file),
+      removedPhotoIds
+    );
   }
 
   return (
@@ -231,14 +258,37 @@ export function CollectionCardForm({
       </details>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Photo (optional)</legend>
-        {values.frontImageUrl && !photoFile ? (
-          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <img src={values.frontImageUrl} alt="Current" className="h-20 w-14 rounded-lg object-cover" />
-            <p className="text-sm text-slate-600">Current photo on file. Upload below to replace.</p>
-          </div>
-        ) : null}
-        <ImageUpload key={uploadKey} onImageSelected={setPhotoFile} accept="image/*" maxSizeMB={10} />
+        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Photos (optional)</legend>
+        <CollectionPhotoPicker
+          existingPhotos={values.photos}
+          pendingPhotos={pendingPhotos}
+          onFilesSelected={(files) => {
+            setPendingPhotos((current) => [...current, ...makePendingCollectionPhotos(files)]);
+          }}
+          onRemoveExisting={(photoId) => {
+            setValues((current) => {
+              const nextPhotos = current.photos.filter((photo) => photo.id !== photoId);
+              return {
+                ...current,
+                photos: nextPhotos,
+                frontImageUrl: nextPhotos[0]?.imageUrl ?? null,
+              };
+            });
+            setRemovedPhotoIds((current) =>
+              current.includes(photoId) ? current : [...current, photoId]
+            );
+          }}
+          onRemovePending={(pendingId) => {
+            setPendingPhotos((current) => {
+              const target = current.find((photo) => photo.id === pendingId);
+              if (target) {
+                URL.revokeObjectURL(target.previewUrl);
+              }
+              return current.filter((photo) => photo.id !== pendingId);
+            });
+          }}
+          disabled={loading}
+        />
       </fieldset>
 
       <label className="block text-sm font-medium text-slate-700">

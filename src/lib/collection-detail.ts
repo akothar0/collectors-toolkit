@@ -1,4 +1,9 @@
 import type { GraderSessionPrefill } from '@/lib/collection';
+import {
+  buildLegacyPhotoUrls,
+  mapCollectionPhotoRows,
+  type CollectionPhoto,
+} from '@/lib/collection-photos';
 
 /** Disambiguates collection_cards.import_item_id vs import_items.collection_card_id */
 export const COLLECTION_CARD_DETAIL_SELECT = `
@@ -53,14 +58,32 @@ export function mapCollectionDetailRow(row: Record<string, unknown>): Collection
       | { id: string; created_at: string; raw_source: string | null }[]
       | null
   );
+  const photoRows = (row.collection_card_images as
+    | { id: string; image_url: string; position: number; created_at?: string | null }[]
+    | null
+    | undefined) ?? null;
 
   const subGradesRaw = row.sub_grades as Record<string, unknown> | null;
+  const photos =
+    photoRows && photoRows.length > 0
+      ? mapCollectionPhotoRows(photoRows)
+      : buildLegacyPhotoUrls(
+          (row.front_image_url as string | null) ?? null,
+          (row.back_image_url as string | null) ?? null
+        ).map((imageUrl, index) => ({
+          id: `legacy-${index}`,
+          imageUrl,
+          position: index,
+        }));
+  const coverImageUrl = photos[0]?.imageUrl ?? ((row.front_image_url as string | null) ?? null);
+  const secondaryImageUrl = photos[1]?.imageUrl ?? ((row.back_image_url as string | null) ?? null);
 
   return {
     id: row.id as string,
     cardId: (row.card_id as string | null) ?? null,
-    frontImageUrl: (row.front_image_url as string | null) ?? null,
-    backImageUrl: (row.back_image_url as string | null) ?? null,
+    frontImageUrl: coverImageUrl,
+    backImageUrl: secondaryImageUrl,
+    photos,
     player: (row.override_player as string | null) ?? card?.player ?? null,
     year: (row.override_year as number | null) ?? card?.year ?? null,
     setName: (row.override_set_name as string | null) ?? card?.set_name ?? null,
@@ -148,6 +171,7 @@ export type CollectionCardDetail = {
   cardId: string | null;
   frontImageUrl: string | null;
   backImageUrl: string | null;
+  photos: CollectionPhoto[];
   player: string | null;
   year: number | null;
   setName: string | null;
@@ -229,6 +253,7 @@ export type CollectionFormValues = {
   gradeSessionId: string | null;
   subGrades: GraderSessionPrefill['subGrades'];
   frontImageUrl: string | null;
+  photos: CollectionPhoto[];
 };
 
 export function detailToFormValues(detail: CollectionCardDetail): CollectionFormValues {
@@ -258,6 +283,7 @@ export function detailToFormValues(detail: CollectionCardDetail): CollectionForm
     gradeSessionId: detail.gradeSessionId,
     subGrades: detail.subGrades,
     frontImageUrl: detail.frontImageUrl,
+    photos: detail.photos,
   };
 }
 
@@ -286,6 +312,7 @@ export function formValuesToPayload(values: CollectionFormValues) {
     subGrades: values.conditionType === 'raw' ? values.subGrades : null,
     gradeSessionId: values.gradeSessionId,
     frontImageUrl: values.frontImageUrl,
+    photoUrls: values.photos.map((photo) => photo.imageUrl),
     purchasePrice: values.purchasePrice.trim() ? Number.parseFloat(values.purchasePrice) : null,
     purchaseDate: values.purchaseDate || null,
     purchaseSource: values.purchaseSource || null,

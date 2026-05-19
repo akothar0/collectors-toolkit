@@ -2,6 +2,7 @@
 .env.local
 .next
 node_modules
+tsconfig.tsbuildinfo
 *.log
 .playwright-mcp
 ct-home.png

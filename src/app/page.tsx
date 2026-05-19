@@ -1,6 +1,9 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { HomeActions } from '@/components/home-actions';
+import { formatPrice } from '@/lib/collection-presenter';
+import { fetchPortfolioSummary } from '@/lib/portfolio-server';
+import { getOrCreateUserId } from '@/lib/users';
 
 type AppRoute = '/' | '/scanner' | '/grader' | '/collection' | '/portfolio' | '/import';
 
@@ -152,6 +155,28 @@ export default async function Page() {
     );
   }
 
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress ?? null;
+  let stats = {
+    totalCards: '0',
+    totalValue: '$0',
+    scans: '0',
+    gradeSessions: '0',
+  };
+
+  try {
+    const supabaseUserId = await getOrCreateUserId(userId, email);
+    const portfolio = await fetchPortfolioSummary(supabaseUserId);
+    stats = {
+      totalCards: String(portfolio.totalCards),
+      totalValue: formatPrice(portfolio.totalCurrentValue) ?? '$0',
+      scans: String(portfolio.scanCount),
+      gradeSessions: String(portfolio.gradeSessionCount),
+    };
+  } catch {
+    // Keep zero defaults if portfolio fetch fails.
+  }
+
   return (
     <section className="space-y-8">
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
@@ -160,15 +185,15 @@ export default async function Page() {
           Your collection overview
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-          The week 1 dashboard starts at zero and grows as you add scans, grades, imports, and collection entries.
+          Scans, grades, imports, and collection entries roll up here as you use the toolkit.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Cards" value="0" />
-        <StatCard label="Total Value" value="$0" />
-        <StatCard label="Scans" value="0" />
-        <StatCard label="Grade Sessions" value="0" />
+        <StatCard label="Total Cards" value={stats.totalCards} />
+        <StatCard label="Total Value" value={stats.totalValue} />
+        <StatCard label="Scans" value={stats.scans} />
+        <StatCard label="Grade Sessions" value={stats.gradeSessions} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

@@ -1,13 +1,12 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
 import { Check, Loader2, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { ButtonGroup } from '@/components/ButtonGroup';
+import { CollectionPhotoPicker } from '@/components/CollectionPhotoPicker';
 import { GradeChips } from '@/components/GradeChips';
-import { ImageUpload } from '@/components/ImageUpload';
 import { PlayerAutocomplete } from '@/components/PlayerAutocomplete';
 import {
   GRADING_COMPANIES,
@@ -17,6 +16,12 @@ import {
   type CardSearchResult,
   type GraderSessionPrefill,
 } from '@/lib/collection';
+import type { CollectionPhoto } from '@/lib/collection-photos';
+import {
+  makePendingCollectionPhotos,
+  type PendingCollectionPhoto,
+  uploadCollectionPhotoFiles,
+} from '@/lib/collection-photo-client';
 import { readJsonResponse } from '@/lib/http-json';
 
 function todayIsoDate() {
@@ -53,14 +58,16 @@ function AddCardForm() {
   const [notes, setNotes] = useState('');
   const [gradeSessionId, setGradeSessionId] = useState<string | null>(null);
   const [subGrades, setSubGrades] = useState<GraderSessionPrefill['subGrades']>(null);
-  const [prefillImageUrl, setPrefillImageUrl] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [uploadKey, setUploadKey] = useState(0);
+  const [existingPhotos, setExistingPhotos] = useState<CollectionPhoto[]>([]);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingCollectionPhoto[]>([]);
+  const pendingPhotosRef = useRef<PendingCollectionPhoto[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [savedCardId, setSavedCardId] = useState<string | null>(null);
+
+  pendingPhotosRef.current = pendingPhotos;
 
   useEffect(() => {
     if (!sessionId) {
@@ -83,7 +90,11 @@ function AddCardForm() {
         setGradingCompany('PSA');
         setCertNumber('');
         setSubGrades(data.subGrades);
-        setPrefillImageUrl(data.frontImageUrl);
+        setExistingPhotos(
+          data.frontImageUrl
+            ? [{ id: 'prefill-0', imageUrl: data.frontImageUrl, position: 0 }]
+            : []
+        );
         setNotes(composeGraderPrefillNotes(data, queryGrade, queryCompany));
       } catch {
         // Prefill is optional.
@@ -96,6 +107,14 @@ function AddCardForm() {
       cancelled = true;
     };
   }, [sessionId, queryGrade, queryCompany]);
+
+  useEffect(() => {
+    return () => {
+      for (const photo of pendingPhotosRef.current) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+    };
+  }, []);
 
   function handleSelectCard(card: CardSearchResult) {
     setCardId(card.id);
@@ -130,9 +149,13 @@ function AddCardForm() {
     setNotes('');
     setGradeSessionId(null);
     setSubGrades(null);
-    setPrefillImageUrl(null);
-    setPhotoFile(null);
-    setUploadKey((k) => k + 1);
+    setExistingPhotos([]);
+    setPendingPhotos((current) => {
+      for (const photo of current) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+      return [];
+    });
     setError('');
     setSaved(false);
     setSavedCardId(null);
@@ -162,21 +185,13 @@ function AddCardForm() {
     setError('');
 
     try {
-      let frontImageUrl = prefillImageUrl;
-
-      if (photoFile) {
-        const formData = new FormData();
-        formData.set('image', photoFile);
-        const uploadResponse = await fetch('/api/collection/image', {
-          method: 'POST',
-          body: formData,
-        });
-        const uploadData = await readJsonResponse<{ imageUrl?: string; error?: string }>(uploadResponse);
-        if (!uploadResponse.ok) {
-          throw new Error(uploadData.error ?? 'Unable to upload photo.');
-        }
-        frontImageUrl = uploadData.imageUrl ?? frontImageUrl;
-      }
+      const uploadedPhotoUrls = await uploadCollectionPhotoFiles(
+        pendingPhotos.map((photo) => photo.file)
+      );
+      const photoUrls = [
+        ...existingPhotos.map((photo) => photo.imageUrl),
+        ...uploadedPhotoUrls,
+      ];
 
       const resolvedCompany =
         conditionType === 'graded'
@@ -204,7 +219,8 @@ function AddCardForm() {
           certNumber: certNumber.trim() || null,
           subGrades: conditionType === 'raw' ? subGrades : null,
           gradeSessionId,
-          frontImageUrl,
+          frontImageUrl: photoUrls[0] ?? null,
+          photoUrls,
           purchasePrice: purchasePrice.trim() ? Number.parseFloat(purchasePrice) : null,
           purchaseDate: purchaseDate || null,
           purchaseSource: purchaseSource || null,
@@ -448,19 +464,32 @@ function AddCardForm() {
 
         <fieldset className="space-y-4">
           <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Photo (optional)
+            Photos (optional)
           </legend>
-          {prefillImageUrl && !photoFile ? (
-            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <img src={prefillImageUrl} alt="From grader" className="h-20 w-14 rounded-lg object-cover" />
-              <p className="text-sm text-slate-600">Using photo from AI grader session. Upload below to replace.</p>
-            </div>
-          ) : null}
-          <ImageUpload
-            key={uploadKey}
-            onImageSelected={(file) => setPhotoFile(file)}
-            accept="image/*"
-            maxSizeMB={10}
+          <CollectionPhotoPicker
+            existingPhotos={existingPhotos}
+            pendingPhotos={pendingPhotos}
+            onFilesSelected={(files) => {
+              setPendingPhotos((current) => [...current, ...makePendingCollectionPhotos(files)]);
+            }}
+            onRemoveExisting={(photoId) => {
+              setExistingPhotos((current) =>
+                current
+                  .filter((photo) => photo.id !== photoId)
+                  .map((photo, index) => ({ ...photo, position: index }))
+              );
+            }}
+            onRemovePending={(pendingId) => {
+              setPendingPhotos((current) => {
+                const target = current.find((photo) => photo.id === pendingId);
+                if (target) {
+                  URL.revokeObjectURL(target.previewUrl);
+                }
+                return current.filter((photo) => photo.id !== pendingId);
+              });
+            }}
+            disabled={loading}
+            helperText="Add up to 10 photos. If this card came from the AI grader, the grader image starts as your cover."
           />
         </fieldset>
 

@@ -1,18 +1,23 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
 import type { Route } from 'next';
 import { useParams, useRouter } from 'next/navigation';
 import { CreditCard, ExternalLink, Loader2, Pencil, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CollectionCardForm } from '@/components/CollectionCardForm';
-import { ImageUpload } from '@/components/ImageUpload';
+import { CollectionPhotoCarousel } from '@/components/CollectionPhotoCarousel';
+import { CollectionPhotoPicker } from '@/components/CollectionPhotoPicker';
 import {
   detailToFormValues,
   formValuesToPayload,
   type CollectionCardDetail,
 } from '@/lib/collection-detail';
+import {
+  makePendingCollectionPhotos,
+  type PendingCollectionPhoto,
+  uploadCollectionPhotoFiles,
+} from '@/lib/collection-photo-client';
 import {
   displayPlayer,
   displaySetName,
@@ -42,7 +47,8 @@ export default function CollectionCardDetailPage() {
   const [valueSaving, setValueSaving] = useState(false);
 
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoKey, setPhotoKey] = useState(0);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingCollectionPhoto[]>([]);
+  const pendingPhotosRef = useRef<PendingCollectionPhoto[]>([]);
 
   const [editing, setEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -53,12 +59,18 @@ export default function CollectionCardDetailPage() {
 
   const [wantLoading, setWantLoading] = useState(false);
 
+  pendingPhotosRef.current = pendingPhotos;
+
   const loadCard = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const response = await fetch(`/api/collection/${cardId}`);
       const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
+      if (response.status === 404) {
+        router.replace('/collection');
+        return;
+      }
       if (!response.ok) {
         throw new Error(data.error ?? 'Unable to load card.');
       }
@@ -70,11 +82,19 @@ export default function CollectionCardDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [cardId]);
+  }, [cardId, router]);
 
   useEffect(() => {
     void loadCard();
   }, [loadCard]);
+
+  useEffect(() => {
+    return () => {
+      for (const photo of pendingPhotosRef.current) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+    };
+  }, []);
 
   async function saveNotes() {
     if (!card || notes === (card.notes ?? '')) return;
@@ -116,49 +136,74 @@ export default function CollectionCardDetailPage() {
     }
   }
 
-  async function handlePhotoSelected(file: File | null) {
-    if (!card || !file) return;
+  async function handleAddPhotos() {
+    if (!card || pendingPhotos.length === 0) return;
     setPhotoUploading(true);
     try {
-      const formData = new FormData();
-      formData.set('image', file);
-      const uploadResponse = await fetch('/api/collection/image', { method: 'POST', body: formData });
-      const uploadData = await readJsonResponse<{ imageUrl?: string; error?: string }>(uploadResponse);
-      if (!uploadResponse.ok) throw new Error(uploadData.error ?? 'Unable to upload photo.');
-
+      const uploadUrls = await uploadCollectionPhotoFiles(
+        pendingPhotos.map((photo) => photo.file)
+      );
       const response = await fetch(`/api/collection/${card.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frontImageUrl: uploadData.imageUrl }),
+        body: JSON.stringify({ appendPhotoUrls: uploadUrls }),
       });
       const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to save photo.');
+      if (!response.ok) throw new Error(data.error ?? 'Unable to save photos.');
       setCard(data);
-      setPhotoKey((k) => k + 1);
+      setPendingPhotos((current) => {
+        for (const photo of current) {
+          URL.revokeObjectURL(photo.previewUrl);
+        }
+        return [];
+      });
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Unable to update photo.');
+      setError(uploadError instanceof Error ? uploadError.message : 'Unable to update photos.');
     } finally {
       setPhotoUploading(false);
     }
   }
 
-  async function handleEditSubmit(values: ReturnType<typeof detailToFormValues>, photoFile: File | null) {
+  async function handleRemovePhoto(photoId: string) {
+    if (!card) return;
+    setPhotoUploading(true);
+    try {
+      const response = await fetch(`/api/collection/${card.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removePhotoIds: [photoId] }),
+      });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
+      if (!response.ok) throw new Error(data.error ?? 'Unable to remove photo.');
+      setCard(data);
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Unable to remove photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function handleEditSubmit(
+    values: ReturnType<typeof detailToFormValues>,
+    photoFiles: File[],
+    _removedPhotoIds: string[]
+  ) {
     if (!card) return;
     setEditLoading(true);
     setEditError('');
 
     try {
-      let frontImageUrl = values.frontImageUrl;
-      if (photoFile) {
-        const formData = new FormData();
-        formData.set('image', photoFile);
-        const uploadResponse = await fetch('/api/collection/image', { method: 'POST', body: formData });
-        const uploadData = await readJsonResponse<{ imageUrl?: string; error?: string }>(uploadResponse);
-        if (!uploadResponse.ok) throw new Error(uploadData.error ?? 'Unable to upload photo.');
-        frontImageUrl = uploadData.imageUrl ?? frontImageUrl;
-      }
+      const appendedPhotoUrls = await uploadCollectionPhotoFiles(photoFiles);
+      const photoUrls = [
+        ...values.photos.map((photo) => photo.imageUrl),
+        ...appendedPhotoUrls,
+      ];
 
-      const payload = { ...formValuesToPayload(values), frontImageUrl };
+      const payload = {
+        ...formValuesToPayload(values),
+        frontImageUrl: photoUrls[0] ?? null,
+        photoUrls,
+      };
       const response = await fetch(`/api/collection/${card.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -266,24 +311,40 @@ export default function CollectionCardDetailPage() {
       ) : (
         <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 shadow-soft">
-              {card.frontImageUrl ? (
-                <img src={card.frontImageUrl} alt={player} className="aspect-[3/4] w-full object-cover" />
-              ) : (
-                <div className="flex aspect-[3/4] items-center justify-center text-slate-300">
-                  <CreditCard className="h-16 w-16" />
-                </div>
-              )}
-            </div>
+            <CollectionPhotoCarousel photos={card.photos} alt={player} />
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Update photo</p>
-              {photoUploading ? (
-                <p className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
-                </p>
-              ) : (
-                <ImageUpload key={photoKey} onImageSelected={handlePhotoSelected} accept="image/*" maxSizeMB={10} />
-              )}
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Photos</p>
+              <div className="mt-3 space-y-4">
+                <CollectionPhotoPicker
+                  existingPhotos={card.photos}
+                  pendingPhotos={pendingPhotos}
+                  onFilesSelected={(files) => {
+                    setPendingPhotos((current) => [...current, ...makePendingCollectionPhotos(files)]);
+                  }}
+                  onRemoveExisting={handleRemovePhoto}
+                  onRemovePending={(pendingId) => {
+                    setPendingPhotos((current) => {
+                      const target = current.find((photo) => photo.id === pendingId);
+                      if (target) {
+                        URL.revokeObjectURL(target.previewUrl);
+                      }
+                      return current.filter((photo) => photo.id !== pendingId);
+                    });
+                  }}
+                  disabled={photoUploading}
+                  helperText="Swipe through saved photos above. Add more images here or remove shots you no longer want on this card."
+                />
+                {pendingPhotos.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleAddPhotos}
+                    disabled={photoUploading}
+                    className="inline-flex items-center justify-center rounded-full bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                  >
+                    {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Upload Selected Photos'}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 

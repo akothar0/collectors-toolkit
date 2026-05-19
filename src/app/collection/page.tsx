@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
 import type { Route } from 'next';
@@ -22,6 +21,8 @@ import {
   formatPlayerYearLine,
   formatPrice,
 } from '@/lib/collection-presenter';
+import { CardImage } from '@/components/card-image';
+import { FetchErrorBanner } from '@/components/fetch-error-banner';
 import { readJsonResponse } from '@/lib/http-json';
 
 type ViewMode = 'grid' | 'list';
@@ -210,7 +211,29 @@ export default function CollectionPage() {
         </div>
       </div>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+      {error ? (
+        <FetchErrorBanner
+          message={error}
+          onRetry={() => {
+            void (async () => {
+              setLoading(true);
+              setError('');
+              try {
+                const response = await fetch(`/api/collection?${buildCollectionQuery(filters)}`);
+                const data = await readJsonResponse<{ items?: CollectionCardItem[]; error?: string }>(
+                  response
+                );
+                if (!response.ok) throw new Error(data.error ?? 'Unable to load collection.');
+                setItems(data.items ?? []);
+              } catch (loadError) {
+                setError(loadError instanceof Error ? loadError.message : 'Unable to load collection.');
+              } finally {
+                setLoading(false);
+              }
+            })();
+          }}
+        />
+      ) : null}
 
       {loading ? (
         <CollectionSkeleton viewMode={viewMode} />
@@ -272,9 +295,9 @@ function CollectionGridCard({ item }: { item: CollectionCardItem }) {
       href={`/collection/${item.id}` as Route}
       className="block overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-soft transition-shadow hover:shadow-md"
     >
-      <div className="aspect-[3/4] bg-slate-100">
+      <div className="relative aspect-[3/4] bg-slate-100">
         {item.frontImageUrl ? (
-          <img src={item.frontImageUrl} alt={player} className="h-full w-full object-cover" />
+          <CardImage src={item.frontImageUrl} alt={player} fill className="h-full w-full" />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-300">
             <CreditCard className="h-12 w-12" />
@@ -327,7 +350,13 @@ function CollectionListTable({
               >
                 <td className="px-4 py-3">
                   {item.frontImageUrl ? (
-                    <img src={item.frontImageUrl} alt="" className="h-12 w-9 rounded object-cover" />
+                    <CardImage
+                      src={item.frontImageUrl}
+                      alt=""
+                      width={36}
+                      height={48}
+                      className="h-12 w-9 rounded"
+                    />
                   ) : (
                     <div className="flex h-12 w-9 items-center justify-center rounded bg-slate-100 text-slate-300">
                       <CreditCard className="h-5 w-5" />

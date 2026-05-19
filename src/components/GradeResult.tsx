@@ -72,7 +72,7 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
   const thumbnails = [
     result.frontImageUrl,
     ...(result.backImageUrl ? [result.backImageUrl] : []),
-  ].filter(Boolean);
+  ].filter((url): url is string => Boolean(url));
 
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-soft">

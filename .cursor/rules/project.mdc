@@ -1,0 +1,12 @@
+---
+description: Collectors Toolkit project conventions and module map
+alwaysApply: true
+---
+
+Read `AGENTS.md` before making changes. Follow existing patterns in `src/lib/` and API routes.
+
+- Auth: Clerk → `getOrCreateUserId` → Supabase queries scoped by `users.id`
+- Server DB: `createServiceClient()` only; RLS is deny-all on user tables
+- Migrations: `supabase/migrations/001`–`007` — apply via `supabase db push` or Supabase MCP
+- Tests: `npm test` after logic changes; `npm run lint` and `npm run build` before PRs
+- Product scope: MVP (weeks 1–8) is shipped; see `collectors_toolkit_product_spec.md` for V2 only

@@ -1,9 +1,11 @@
 # Collectors Toolkit — Product Requirements Document & Build Spec
 
-**Status:** Draft v1.0
-**Date:** 2026-05-15
-**Author:** Aditya
-**Stack:** Next.js 15 · TypeScript · Tailwind CSS · Clerk · Supabase · OpenAI GPT-4o · Vercel
+**Status:** MVP implemented (Weeks 1–8 shipped in repo)  
+**Date:** 2026-05-15 (updated 2026-05-19)  
+**Author:** Aditya  
+**Stack:** Next.js 15 · TypeScript · Tailwind CSS · Clerk · Supabase · OpenAI GPT-4o · Vercel  
+
+**Agent / dev docs:** [`AGENTS.md`](AGENTS.md) · [`README.md`](README.md) · [`collectors_toolkit_product_spec.md`](collectors_toolkit_product_spec.md)
 
 ---
 
@@ -501,32 +503,26 @@ collectors-toolkit/
 │   ├── openai.ts                     # OpenAI client
 │   ├── rate-limit.ts                 # Per-user daily limits
 │   ├── card-catalog.ts               # findOrCreateCard() dedup logic
-│   ├── cert-lookup/
-│   │   ├── psa.ts                    # PSA official API
-│   │   ├── bgs.ts                    # Beckett scraper
-│   │   ├── sgc.ts                    # SGC scraper
-│   │   └── index.ts                  # Unified lookupCert() with fallback
-│   └── import/
-│       ├── parse-ebay-csv.ts         # eBay CSV column mapping
-│       ├── parse-fanatics.ts         # Fanatics CSV mapping
-│       ├── parse-image.ts            # GPT-4o Vision import parser
-│       ├── parse-text.ts             # GPT-4o text import parser
-│       └── normalize.ts              # GPT-4o title → card identity
+│   ├── collection-photos.ts          # Multi-image gallery (collection_card_images)
+│   ├── portfolio.ts, portfolio-server.ts, sets.ts, grader-db.ts
+│   ├── cert-lookup/                  # PSA API, BGS scrape, CardGrade fallback
+│   └── import/                       # Screenshot, PDF, text, bookmarklet parsers
 │
-├── supabase/
-│   └── migrations/
-│       ├── 001_initial_schema.sql    # All tables (Week 1)
-│       ├── 002_indexes.sql           # Performance indexes (Week 1)
-│       ├── 003_card_sets.sql         # Set tracking tables (if added later)
-│       └── 004_rls.sql               # Row Level Security (Week 8)
-│
-├── types/
-│   └── index.ts                      # Shared TypeScript types
-│
-├── .env.local                        # (gitignored) real env vars
-├── .env.example                      # Placeholder env vars for reference
+├── supabase/migrations/
+│   ├── 001_initial_schema.sql
+│   ├── 002_grader_columns.sql
+│   ├── 003_import_storage.sql
+│   ├── 004_rls.sql
+│   ├── 005_card_images_storage.sql
+│   ├── 006_collection_card_images.sql
+│   └── 007_rls_sets.sql
+├── tests/*.test.ts                   # node:test unit tests
+├── AGENTS.md                         # AI agent conventions
+├── .env.example
 └── README.md
 ```
+
+> The tree above is indicative; see the repo for the full file list. Types live in `@/lib/*`, not a top-level `types/` folder.
 
 ---
 

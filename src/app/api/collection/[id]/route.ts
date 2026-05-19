@@ -11,6 +11,15 @@ import {
   COLLECTION_CARD_DETAIL_SELECT,
   mapCollectionDetailRow,
 } from '@/lib/collection-detail';
+import {
+  type CollectionPhoto,
+  appendCollectionCardPhotos,
+  buildLegacyPhotoUrls,
+  COLLECTION_CARD_PHOTO_LIMIT,
+  listCollectionCardPhotos,
+  removeCollectionCardPhotos,
+  replaceCollectionCardPhotos,
+} from '@/lib/collection-photos';
 import { getAuthenticatedSupabaseUserId } from '@/lib/collection-auth';
 import { createServiceClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
@@ -32,7 +41,28 @@ async function getOwnedCard(id: string, supabaseUserId: string) {
     throw new Error(error.message);
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  let photos: CollectionPhoto[] = [];
+  try {
+    photos = await listCollectionCardPhotos(supabase, id, supabaseUserId);
+  } catch (photoError) {
+    console.error('Unable to load collection gallery rows, falling back to legacy image fields', {
+      cardId: id,
+      error: photoError instanceof Error ? photoError.message : String(photoError),
+    });
+  }
+
+  return {
+    ...(data as Record<string, unknown>),
+    collection_card_images: photos.map((photo) => ({
+      id: photo.id,
+      image_url: photo.imageUrl,
+      position: photo.position,
+    })),
+  };
 }
 
 export async function GET(_req: Request, context: RouteContext) {
@@ -73,6 +103,26 @@ export async function PUT(req: Request, context: RouteContext) {
 
     const body = (await req.json()) as Record<string, unknown>;
     const supabase = createServiceClient();
+    const hasPhotoUrlsField = Array.isArray(body.photoUrls);
+    const appendPhotoUrls = Array.isArray(body.appendPhotoUrls)
+      ? body.appendPhotoUrls
+          .map((value) => toText(value))
+          .filter((value): value is string => Boolean(value))
+      : [];
+    const removePhotoIds = Array.isArray(body.removePhotoIds)
+      ? body.removePhotoIds
+          .map((value) => toText(value))
+          .filter((value): value is string => Boolean(value))
+      : [];
+    const replacePhotoUrls = Array.isArray(body.photoUrls)
+      ? body.photoUrls
+          .map((value) => toText(value))
+          .filter((value): value is string => Boolean(value))
+      : [];
+    const legacyPhotoUrls =
+      !hasPhotoUrlsField && appendPhotoUrls.length === 0 && removePhotoIds.length === 0
+        ? buildLegacyPhotoUrls(firstText(body.frontImageUrl, body.imageUrl), toText(body.backImageUrl))
+        : [];
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -121,10 +171,6 @@ export async function PUT(req: Request, context: RouteContext) {
     }
 
     if ('sport' in body) updates.sport = toText(body.sport);
-    if ('frontImageUrl' in body || 'imageUrl' in body) {
-      updates.front_image_url = firstText(body.frontImageUrl, body.imageUrl);
-    }
-    if ('backImageUrl' in body) updates.back_image_url = toText(body.backImageUrl);
     if ('notes' in body) updates.notes = toText(body.notes);
     if ('purchasePrice' in body) updates.purchase_price = toNumber(body.purchasePrice);
     if ('purchaseDate' in body) updates.purchase_date = toText(body.purchaseDate);
@@ -154,22 +200,72 @@ export async function PUT(req: Request, context: RouteContext) {
     if ('gradingCompany' in body) updates.grading_company = toText(body.gradingCompany);
     if ('grade' in body) updates.grade = toNumber(body.grade);
 
-    const { data, error } = await supabase
+    if (
+      appendPhotoUrls.length > COLLECTION_CARD_PHOTO_LIMIT ||
+      replacePhotoUrls.length > COLLECTION_CARD_PHOTO_LIMIT ||
+      legacyPhotoUrls.length > COLLECTION_CARD_PHOTO_LIMIT
+    ) {
+      return NextResponse.json(
+        { error: `You can upload up to ${COLLECTION_CARD_PHOTO_LIMIT} photos per card.` },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase
       .from('collection_cards')
       .update(updates)
       .eq('id', id)
       .eq('user_id', supabaseUserId)
-      .select(COLLECTION_CARD_DETAIL_SELECT)
+      .select('id')
       .single();
 
-    if (error || !data) {
+    if (error) {
       return NextResponse.json(
         { error: error?.message ?? 'Unable to update card.' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(mapCollectionDetailRow(data as Record<string, unknown>));
+    if (hasPhotoUrlsField) {
+      await replaceCollectionCardPhotos(
+        supabase,
+        id,
+        supabaseUserId,
+        replacePhotoUrls
+      );
+    } else if (legacyPhotoUrls.length > 0) {
+      await replaceCollectionCardPhotos(
+        supabase,
+        id,
+        supabaseUserId,
+        legacyPhotoUrls
+      );
+    } else {
+      if (appendPhotoUrls.length > 0) {
+        await appendCollectionCardPhotos(
+          supabase,
+          id,
+          supabaseUserId,
+          appendPhotoUrls
+        );
+      }
+
+      if (removePhotoIds.length > 0) {
+        await removeCollectionCardPhotos(
+          supabase,
+          id,
+          supabaseUserId,
+          removePhotoIds
+        );
+      }
+    }
+
+    const updated = await getOwnedCard(id, supabaseUserId);
+    if (!updated) {
+      return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
+    }
+
+    return NextResponse.json(mapCollectionDetailRow(updated as Record<string, unknown>));
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to update card.' },

@@ -7,6 +7,7 @@ export const PROTECTED_ROUTE_PREFIXES = [
   '/wantlist',
   '/portfolio',
   '/import',
+  '/sets',
 ] as const;
 
 export function isPublicRoute(pathname: string) {

@@ -105,3 +105,7 @@ export async function uploadPublicCardImage(userId: string, imageFile: File) {
     throw classifyCardImageUploadError(error);
   }
 }
+
+export async function uploadPublicCardImages(userId: string, imageFiles: File[]) {
+  return Promise.all(imageFiles.map((imageFile) => uploadPublicCardImage(userId, imageFile)));
+}

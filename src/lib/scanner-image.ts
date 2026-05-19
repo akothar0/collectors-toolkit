@@ -15,5 +15,5 @@ export function isPersistableImageUrl(imageUrl: string | null | undefined) {
 }
 
 export function resolveStoredScanImageUrl(uploadedImageUrl: string | null | undefined) {
-  return isPersistableImageUrl(uploadedImageUrl) ? uploadedImageUrl.trim() : '';
+  return isPersistableImageUrl(uploadedImageUrl) ? (uploadedImageUrl?.trim() ?? '') : '';
 }

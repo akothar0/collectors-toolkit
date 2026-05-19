@@ -5,6 +5,12 @@ import {
   parseCollectionSortBy,
   parseCollectionSortDir,
 } from '@/lib/collection';
+import {
+  buildLegacyPhotoUrls,
+  COLLECTION_CARD_PHOTO_LIMIT,
+  replaceCollectionCardPhotos,
+} from '@/lib/collection-photos';
+import { mapCollectionRow, type CollectionRow } from '@/lib/collection-rows';
 import { displayPlayer, displaySetName, displayYear } from '@/lib/collection-presenter';
 import { findOrCreateCard } from '@/lib/card-catalog';
 import { createServiceClient } from '@/lib/supabase';
@@ -81,65 +87,14 @@ function toSubGrades(value: unknown) {
   return subGrades;
 }
 
-type CollectionRow = {
-  id: string;
-  front_image_url: string | null;
-  override_player: string | null;
-  override_year: number | null;
-  override_set_name: string | null;
-  override_parallel: string | null;
-  override_card_number: string | null;
-  sport: string | null;
-  condition_type: string;
-  grade: number | null;
-  grading_company: string | null;
-  cert_number: string | null;
-  purchase_price: number | null;
-  purchase_date: string | null;
-  current_value: number | null;
-  created_at: string;
-  cards: {
-    player: string;
-    year: number | null;
-    set_name: string | null;
-    card_number: string | null;
-    parallel: string | null;
-    sport: string | null;
-  } | null;
-};
-
-function normalizeCardJoin(cards: CollectionRow['cards'] | CollectionRow['cards'][] | null | undefined) {
-  if (!cards) {
-    return null;
+function toTextArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  if (Array.isArray(cards)) {
-    return cards[0] ?? null;
-  }
-
-  return cards;
-}
-
-function mapRowToItem(row: CollectionRow): CollectionCardItem {
-  const card = normalizeCardJoin(row.cards as CollectionRow['cards'] | CollectionRow['cards'][]);
-  return {
-    id: row.id,
-    frontImageUrl: row.front_image_url,
-    player: row.override_player ?? card?.player ?? null,
-    year: row.override_year ?? card?.year ?? null,
-    setName: row.override_set_name ?? card?.set_name ?? null,
-    parallel: row.override_parallel ?? card?.parallel ?? null,
-    cardNumber: row.override_card_number ?? card?.card_number ?? null,
-    sport: row.sport ?? card?.sport ?? null,
-    conditionType: row.condition_type,
-    grade: row.grade != null ? Number(row.grade) : null,
-    gradingCompany: row.grading_company,
-    certNumber: row.cert_number,
-    purchasePrice: row.purchase_price != null ? Number(row.purchase_price) : null,
-    purchaseDate: row.purchase_date,
-    currentValue: row.current_value != null ? Number(row.current_value) : null,
-    createdAt: row.created_at,
-  };
+  return value
+    .map((item) => toText(item))
+    .filter((item): item is string => Boolean(item));
 }
 
 function sortItems(items: CollectionCardItem[], sortBy: string, sortDir: 'asc' | 'desc') {
@@ -233,7 +188,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  let items = ((data ?? []) as unknown as CollectionRow[]).map(mapRowToItem);
+  let items = ((data ?? []) as unknown as CollectionRow[]).map(mapCollectionRow);
 
   if (search) {
     const term = search.toLowerCase();
@@ -323,7 +278,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'A card could not be resolved for this collection entry.' }, { status: 400 });
   }
 
-  const frontImageUrl = firstText(body.frontImageUrl, body.imageUrl);
+  const photoUrls = toTextArray(body.photoUrls);
+  const legacyPhotoUrls = buildLegacyPhotoUrls(
+    firstText(body.frontImageUrl, body.imageUrl),
+    toText(body.backImageUrl)
+  );
+  const resolvedPhotoUrls = photoUrls.length > 0 ? photoUrls : legacyPhotoUrls;
+  if (resolvedPhotoUrls.length > COLLECTION_CARD_PHOTO_LIMIT) {
+    return NextResponse.json(
+      { error: `You can upload up to ${COLLECTION_CARD_PHOTO_LIMIT} photos per card.` },
+      { status: 400 }
+    );
+  }
+  const frontImageUrl = resolvedPhotoUrls[0] ?? null;
   const conditionType = toText(body.conditionType) ?? (body.grade || body.certNumber ? 'graded' : 'raw');
 
   const { data, error } = await supabase
@@ -335,7 +302,7 @@ export async function POST(req: Request) {
       grade_session_id: gradeSessionId,
       import_item_id: importItemId,
       front_image_url: frontImageUrl,
-      back_image_url: toText(body.backImageUrl),
+      back_image_url: resolvedPhotoUrls[1] ?? null,
       override_player: firstText(body.cardPlayer, body.player),
       override_year: toInteger(body.cardYear ?? body.year),
       override_set_name: firstText(body.cardSet, body.setName),
@@ -365,6 +332,15 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: `Unable to save collection entry: ${error?.message ?? 'unknown error'}` },
       { status: 500 }
+    );
+  }
+
+  if (resolvedPhotoUrls.length > 0) {
+    await replaceCollectionCardPhotos(
+      supabase,
+      data.id as string,
+      supabaseUserId,
+      resolvedPhotoUrls
     );
   }
 

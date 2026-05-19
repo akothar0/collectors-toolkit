@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Heart, Loader2, Plus, Trash2 } from 'lucide-react';
+import { FetchErrorBanner } from '@/components/fetch-error-banner';
 import { useEffect, useState } from 'react';
 import { buildWantListAddUrl, type WantListItem } from '@/lib/wantlist';
 import { formatDateLabel, formatPrice } from '@/lib/collection-presenter';
@@ -142,6 +143,7 @@ export default function WantListPage() {
           Description <span className="text-rose-500">*</span>
           <input
             type="text"
+            id="wantlist-description"
             required
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -222,14 +224,28 @@ export default function WantListPage() {
         </button>
       </form>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+      {error ? <FetchErrorBanner message={error} onRetry={() => void loadItems()} /> : null}
 
       {loading ? (
-        <p className="text-slate-600">Loading...</p>
+        <ul className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <li key={index} className="h-20 animate-pulse rounded-[1.5rem] bg-slate-100" />
+          ))}
+        </ul>
       ) : items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
-          No active want list items.
-        </p>
+        <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white px-8 py-16 text-center shadow-soft">
+          <Heart className="mx-auto h-12 w-12 text-slate-300" />
+          <p className="mt-4 text-lg font-medium text-slate-950">Nothing on your want list</p>
+          <p className="mt-2 text-sm text-slate-600">Add cards you are hunting for at shows and online.</p>
+          <button
+            type="button"
+            onClick={() => document.getElementById('wantlist-description')?.focus()}
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Add Item
+          </button>
+        </div>
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (

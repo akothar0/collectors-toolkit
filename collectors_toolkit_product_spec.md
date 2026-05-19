@@ -1,6 +1,7 @@
 # Collectors Toolkit — Product Spec & Roadmap
 
-> This is the source-of-truth product document. The weekly implementation prompts are in `collectors_toolkit_weekly_prompts.md`.
+> This is the source-of-truth product document. The weekly implementation prompts are in `collectors_toolkit_weekly_prompts.md`.  
+> **Implementation reference for agents:** [`AGENTS.md`](AGENTS.md) · [`README.md`](README.md)
 
 ---
 
@@ -17,7 +18,7 @@ A set of AI-powered tools for sports card collectors. Not a marketplace. Not a p
 | Differentiator | What we do | What competitors do |
 |----------------|------------|---------------------|
 | AI raw card grader | Photo → AI grade + sub-grades + submission ROI | Nobody does this well |
-| Purchase import | eBay CSV / screenshot → auto-parsed collection | Nobody does this |
+| Purchase import | eBay bookmarklet / screenshots / Fanatics PDF → parsed collection | Nobody does this |
 | Free tier | Core tools free forever | CardHedger $49/mo, Market Movers subscription |
 | Fast collection entry | Card added in under 30 seconds | Most tools take minutes |
 
@@ -25,7 +26,7 @@ A set of AI-powered tools for sports card collectors. Not a marketplace. Not a p
 
 ## Feature Set
 
-### MVP (Weeks 1–8)
+### MVP (Weeks 1–8) — shipped in repo
 
 **1. Graded Card Scanner**
 Scan a graded slab → cert lookup → card identity + grade + population data
@@ -202,10 +203,23 @@ sub_grades jsonb,             ← {"centering":9,"corners":9.5,"edges":9,"surfac
 pop_at_grade, pop_higher, pop_captured_at,
 purchase_price, purchase_date, purchase_source, purchase_url,
 current_value, value_updated_at, value_source (manual|ebay_api|cardhedger),
-front_image_url, back_image_url,
+front_image_url, back_image_url,   ← legacy sync; first two gallery slots
 scan_id (fk graded_scans), grade_session_id (fk raw_grade_sessions), import_item_id (fk import_items),
 status (owned|sold|traded|lost), sold_price, sold_date, sold_to,
 notes, created_at, updated_at
+```
+
+### `collection_card_images` — Per-card photo gallery (up to 10)
+```
+id, collection_card_id (fk), user_id (fk), image_url, position (0-based), created_at
+UNIQUE (collection_card_id, position)
+```
+Server writes via `@/lib/collection-photos.ts`; RLS deny-all (service role only).
+
+### `card_sets` + `collection_set_progress` — Set tracker
+```
+card_sets: id, name, year, sport, total_cards, created_by, created_at
+collection_set_progress: user_id, set_id, cards_owned_count, card_checklist (jsonb), updated_at
 ```
 
 ### `graded_scans` — Scanner sessions
@@ -271,25 +285,25 @@ import_items: id, batch_id, user_id, raw_title, raw_price numeric(10,2), raw_dat
 
 ## Build Timeline
 
-### Phase 1 — Foundation (Week 1)
+### Phase 1 — Foundation (Week 1) ✅
 Scaffold, auth, DB schema, base UI, Vercel deploy
 
-### Phase 2 — Graded Scanner (Weeks 2–3)
-Week 2: GPT-4o OCR + PSA API + image upload
-Week 3: BGS/SGC scrape + cert fallback + scanner results + save to collection
+### Phase 2 — Graded Scanner (Weeks 2–3) ✅
+Week 2: GPT-4o OCR + PSA API + image upload  
+Week 3: BGS scrape + cert fallback + scanner results + save to collection
 
-### Phase 3 — Raw Card Grader (Week 4)
-GPT-4o grading prompt + grade results UI + confidence display + grade history
+### Phase 3 — Raw Card Grader (Week 4) ✅
+GPT-4o grading prompt + grade results UI + confidence display + `/grader/history`
 
-### Phase 4 — Collection Manager (Weeks 5–6)
-Week 5: Manual add + collection grid + player autocomplete
-Week 6: Card detail + edit/delete + want list + value updates
+### Phase 4 — Collection Manager (Weeks 5–6) ✅
+Week 5: Manual add + collection grid + filters  
+Week 6: Card detail + edit + want list + multi-photo gallery (`006_collection_card_images`)
 
-### Phase 5 — Purchase Import (Week 7)
-CSV parsers + screenshot parser + text parser + import review UI + save flow
+### Phase 5 — Purchase Import (Week 7) ✅
+Screenshot parser + bookmarklet + Fanatics PDF + text paste + review UI + save flow
 
-### Phase 6 — Portfolio + Polish (Week 8)
-Portfolio dashboard + set completion tracker + mobile pass + empty states + launch
+### Phase 6 — Portfolio + Polish (Week 8) ✅
+Portfolio dashboard (`/portfolio`) + set tracker (`/sets`) + RLS (`007_rls_sets`)
 
 ### Phase 7 — V2: Price Data (Weeks 10–12)
 eBay Browse API + price lookup tool + want list price alerts
