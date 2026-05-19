@@ -35,6 +35,7 @@ function AddCardForm() {
   const scanIdParam = searchParams.get('scan');
   const queryGrade = searchParams.get('grade') ?? undefined;
   const queryCompany = searchParams.get('company') ?? undefined;
+  const queryCardId = searchParams.get('cardId');
   const queryPlayer = searchParams.get('player') ?? '';
   const queryYear = searchParams.get('year') ?? '';
   const querySport = searchParams.get('sport') ?? 'Baseball';
@@ -45,7 +46,7 @@ function AddCardForm() {
   const queryCert = searchParams.get('cert') ?? '';
 
   const [player, setPlayer] = useState(queryPlayer);
-  const [cardId, setCardId] = useState<string | null>(null);
+  const [cardId, setCardId] = useState<string | null>(queryCardId);
   const [year, setYear] = useState(queryYear);
   const [sport, setSport] = useState<string>(querySport);
   const [setName, setSetName] = useState(querySet);
@@ -97,6 +98,13 @@ function AddCardForm() {
         setGrade(null);
         setGradingCompany('PSA');
         setCertNumber('');
+        if (data.identifiedCard?.cardId) setCardId(data.identifiedCard.cardId);
+        if (data.identifiedCard?.player) setPlayer(data.identifiedCard.player);
+        if (data.identifiedCard?.year != null) setYear(String(data.identifiedCard.year));
+        if (data.identifiedCard?.sport) setSport(data.identifiedCard.sport);
+        if (data.identifiedCard?.setName) setSetName(data.identifiedCard.setName);
+        if (data.identifiedCard?.cardNumber) setCardNumber(data.identifiedCard.cardNumber);
+        if (data.identifiedCard?.parallel) setParallel(data.identifiedCard.parallel);
         setSubGrades(data.subGrades);
         setExistingPhotos(
           data.frontImageUrl

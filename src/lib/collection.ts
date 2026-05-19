@@ -63,6 +63,29 @@ export type CardSearchResult = {
   set_name: string | null;
 };
 
+export type GraderIdentifiedCardCandidate = {
+  cardId: string;
+  player: string;
+  year: number | null;
+  setName: string | null;
+  cardNumber: string | null;
+};
+
+export type GraderIdentifiedCard = {
+  player: string | null;
+  year: number | null;
+  sport: string | null;
+  setName: string | null;
+  cardNumber: string | null;
+  parallel: string | null;
+  manufacturer: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  status: 'matched' | 'candidates' | 'needs_review';
+  cardId: string | null;
+  cardsightCardId: string | null;
+  candidates?: GraderIdentifiedCardCandidate[];
+};
+
 export type ScanPrefill = {
   scanId: string;
   cardId: string | null;
@@ -86,6 +109,7 @@ export type ScanPrefill = {
 export type GraderSessionPrefill = {
   sessionId: string;
   frontImageUrl: string | null;
+  backImageUrl: string | null;
   subGrades: {
     centering?: number;
     corners?: number;
@@ -97,6 +121,7 @@ export type GraderSessionPrefill = {
   bgsPrediction: number | null;
   cgcPrediction: number | null;
   imageCount: number;
+  identifiedCard?: GraderIdentifiedCard | null;
 };
 
 export function buildCollectionQuery(filters: CollectionListFilters) {

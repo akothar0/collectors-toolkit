@@ -4,10 +4,11 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GradeProfitabilityTable } from '@/components/GradeProfitabilityTable';
 import { PlayerAutocomplete } from '@/components/PlayerAutocomplete';
 import { Button, Eyebrow, Rule } from '@/components/editorial';
+import type { GraderIdentifiedCard, GraderSessionPrefill } from '@/lib/collection';
 import { SPORTS } from '@/lib/collection';
 import { formatPrice } from '@/lib/collection-presenter';
 import { readJsonResponse } from '@/lib/http-json';
@@ -59,7 +60,11 @@ function gradeCircleColor(g: number) {
 
 export function GradeResult({ result, onReset }: GradeResultProps) {
   const collectionCompany = result.submissionCompany ?? 'PSA';
+  const [identifiedCard, setIdentifiedCard] = useState<GraderIdentifiedCard | null>(null);
+  const [identifyLoading, setIdentifyLoading] = useState(false);
+  const [identifyError, setIdentifyError] = useState('');
   const [player, setPlayer] = useState('');
+  const [cardId, setCardId] = useState<string | null>(null);
   const [year, setYear] = useState('');
   const [sport, setSport] = useState('Baseball');
   const [setName, setSetName] = useState('');
@@ -72,13 +77,117 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
   const [roiError, setRoiError] = useState('');
   const thumbnails = [result.frontImageUrl, result.backImageUrl].filter((u): u is string => Boolean(u));
 
-  const collectionHref = `/collection/add?grade=${result.psaPrediction}&company=${collectionCompany}&session=${result.sessionId}&player=${encodeURIComponent(
-    player
-  )}&year=${encodeURIComponent(year)}&sport=${encodeURIComponent(
-    sport
-  )}&setName=${encodeURIComponent(setName)}&cardNumber=${encodeURIComponent(
-    cardNumber
-  )}&parallel=${encodeURIComponent(parallel)}&purchasePrice=${encodeURIComponent(rawPrice)}`;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSessionPrefill() {
+      try {
+        const response = await fetch(`/api/grader/session/${result.sessionId}`);
+        const data = await readJsonResponse<GraderSessionPrefill & { error?: string }>(response);
+        if (!response.ok || cancelled) return;
+
+        if (data.identifiedCard) {
+          hydrateIdentity(data.identifiedCard);
+        }
+      } catch {
+        // Prefill is optional.
+      }
+    }
+
+    void loadSessionPrefill();
+    return () => {
+      cancelled = true;
+    };
+  }, [result.sessionId]);
+
+  function hydrateIdentity(next: GraderIdentifiedCard) {
+    setIdentifiedCard(next);
+    setCardId(next.cardId);
+    setPlayer(next.player ?? '');
+    setYear(next.year != null ? String(next.year) : '');
+    setSport(next.sport ?? 'Baseball');
+    setSetName(next.setName ?? '');
+    setCardNumber(next.cardNumber ?? '');
+    setParallel(next.parallel ?? '');
+  }
+
+  function buildIdentityDraft(overrides?: Partial<GraderIdentifiedCard>): GraderIdentifiedCard {
+    const trimmedPlayer = player.trim();
+    const trimmedSetName = setName.trim();
+    const trimmedCardNumber = cardNumber.trim();
+    const trimmedParallel = parallel.trim();
+    const parsedYear = Number.parseInt(year, 10);
+
+    return {
+      player: overrides?.player ?? (trimmedPlayer || null),
+      year: overrides?.year ?? (Number.isFinite(parsedYear) ? parsedYear : null),
+      sport: overrides?.sport ?? (sport || null),
+      setName: overrides?.setName ?? (trimmedSetName || null),
+      cardNumber: overrides?.cardNumber ?? (trimmedCardNumber || null),
+      parallel: overrides?.parallel ?? (trimmedParallel || null),
+      manufacturer: overrides?.manufacturer ?? identifiedCard?.manufacturer ?? null,
+      confidence: overrides?.confidence ?? identifiedCard?.confidence ?? 'medium',
+      status: overrides?.status ?? identifiedCard?.status ?? 'needs_review',
+      cardId: overrides?.cardId ?? cardId,
+      cardsightCardId: overrides?.cardsightCardId ?? identifiedCard?.cardsightCardId ?? null,
+      candidates: overrides?.candidates ?? identifiedCard?.candidates,
+    };
+  }
+
+  async function persistReviewedIdentity(overrides?: Partial<GraderIdentifiedCard>) {
+    const response = await fetch('/api/grader/identify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: result.sessionId,
+        identifiedCard: buildIdentityDraft(overrides),
+      }),
+    });
+    const data = await readJsonResponse<{ identifiedCard?: GraderIdentifiedCard; error?: string }>(response);
+    if (!response.ok || !data.identifiedCard) {
+      throw new Error(data.error ?? 'Unable to save identified card details.');
+    }
+    hydrateIdentity(data.identifiedCard);
+    return data.identifiedCard;
+  }
+
+  function buildCollectionHref() {
+    const params = new URLSearchParams({
+      grade: String(result.psaPrediction),
+      company: collectionCompany,
+      session: result.sessionId,
+      player,
+      year,
+      sport,
+      setName,
+      cardNumber,
+      parallel,
+      purchasePrice: rawPrice,
+    });
+    if (cardId) params.set('cardId', cardId);
+    return `/collection/add?${params.toString()}`;
+  }
+
+  async function handleIdentifyCard() {
+    setIdentifyLoading(true);
+    setIdentifyError('');
+    try {
+      const response = await fetch('/api/grader/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: result.sessionId }),
+      });
+      const data = await readJsonResponse<{ identifiedCard?: GraderIdentifiedCard; error?: string }>(response);
+      if (!response.ok || !data.identifiedCard) {
+        throw new Error(data.error ?? 'Unable to identify this card.');
+      }
+      hydrateIdentity(data.identifiedCard);
+    } catch (error) {
+      setIdentifyError(error instanceof Error ? error.message : 'Unable to identify this card.');
+    } finally {
+      setIdentifyLoading(false);
+    }
+  }
 
   async function handleCalculateProfitability() {
     const parsedRawPrice = Number.parseFloat(rawPrice);
@@ -94,6 +203,7 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
     setRoiLoading(true);
     setRoiError('');
     try {
+      await persistReviewedIdentity();
       const response = await fetch('/api/grader/roi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +216,7 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             cardNumber: cardNumber.trim() || null,
             parallel: parallel.trim() || null,
             sport,
-            manufacturer: null,
+            manufacturer: identifiedCard?.manufacturer ?? null,
           },
           rawPrice: parsedRawPrice,
           feeTier,
@@ -232,7 +342,12 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
 
         {/* CTAs */}
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href={collectionHref as Route}
+          <Link href={buildCollectionHref() as Route}
+            onClick={() => {
+              void persistReviewedIdentity().catch(() => {
+                // Keep navigation intact even if persistence fails.
+              });
+            }}
             className="inline-flex h-10 flex-1 items-center justify-center rounded-md bg-ink px-5 text-[13px] font-medium text-paper hover:bg-ink/90">
             Add to collection with grade
           </Link>
@@ -251,12 +366,77 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={handleIdentifyCard} disabled={identifyLoading}>
+              {identifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {identifiedCard ? 'Try identify again' : 'Identify card'}
+            </Button>
+            {identifiedCard ? (
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                {identifiedCard.status === 'matched'
+                  ? `AI match · ${identifiedCard.confidence} confidence`
+                  : identifiedCard.status === 'candidates'
+                    ? `AI suggestions · ${identifiedCard.confidence} confidence`
+                    : `Needs review · ${identifiedCard.confidence} confidence`}
+              </p>
+            ) : (
+              <p className="text-[13px] text-ink-2">
+                Use the stored grader photos to suggest the card, then review before pricing.
+              </p>
+            )}
+          </div>
+
+          {identifyError ? <p className="font-mono text-[11px] text-negative">{identifyError}</p> : null}
+          {identifiedCard?.status === 'candidates' && identifiedCard.candidates && identifiedCard.candidates.length > 0 ? (
+            <div className="rounded border border-rule bg-surface-2 p-3">
+              <Eyebrow className="mb-2">Candidate matches</Eyebrow>
+              <div className="flex flex-wrap gap-2">
+                {identifiedCard.candidates.map((candidate) => (
+                  <button
+                    key={candidate.cardId}
+                    type="button"
+                    onClick={() => {
+                      setIdentifyError('');
+                      void persistReviewedIdentity({
+                        player: candidate.player,
+                        year: candidate.year,
+                        setName: candidate.setName,
+                        cardNumber: candidate.cardNumber,
+                        cardId: candidate.cardId,
+                        status: 'matched',
+                        candidates: undefined,
+                      }).catch((error) => {
+                        setIdentifyError(
+                          error instanceof Error
+                            ? error.message
+                            : 'Unable to save selected card match.'
+                        );
+                      });
+                    }}
+                    className="rounded border border-rule bg-surface px-3 py-2 text-left text-[12px] text-ink hover:bg-paper"
+                  >
+                    <div className="font-medium">{candidate.player}</div>
+                    <div className="font-mono text-[10px] text-ink-3">
+                      {[candidate.year, candidate.setName, candidate.cardNumber ? `#${candidate.cardNumber}` : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <PlayerAutocomplete
                 value={player}
-                onChange={setPlayer}
+                onChange={(value) => {
+                  setPlayer(value);
+                  setCardId(null);
+                }}
                 onSelectCard={(card) => {
+                  setCardId(card.id);
                   if (card.year) setYear(String(card.year));
                   if (card.set_name) setSetName(card.set_name);
                 }}

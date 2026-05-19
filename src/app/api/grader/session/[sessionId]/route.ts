@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { GraderSessionPrefill } from '@/lib/collection';
+import { extractStoredIdentifiedCard } from '@/lib/grader-identify';
 import { createServiceClient } from '@/lib/supabase';
 import { getOrCreateUserId } from '@/lib/users';
 
@@ -31,7 +32,7 @@ export async function GET(_req: Request, context: RouteContext) {
   const { data, error } = await supabase
     .from('raw_grade_sessions')
     .select(
-      'id, front_image_url, image_url, sub_centering, sub_corners, sub_edges, sub_surface, condition_notes, psa_prediction, bgs_prediction, cgc_prediction, image_count'
+      'id, card_id, front_image_url, back_image_url, image_url, sub_centering, sub_corners, sub_edges, sub_surface, condition_notes, psa_prediction, bgs_prediction, cgc_prediction, image_count, raw_ai_response'
     )
     .eq('id', sessionId)
     .eq('user_id', supabaseUserId)
@@ -61,12 +62,14 @@ export async function GET(_req: Request, context: RouteContext) {
   const prefill: GraderSessionPrefill = {
     sessionId: data.id as string,
     frontImageUrl: (data.front_image_url as string | null) ?? (data.image_url as string | null),
+    backImageUrl: (data.back_image_url as string | null) ?? null,
     subGrades,
     conditionNotes: (data.condition_notes as string | null) ?? null,
     psaPrediction: data.psa_prediction != null ? Number(data.psa_prediction) : null,
     bgsPrediction: data.bgs_prediction != null ? Number(data.bgs_prediction) : null,
     cgcPrediction: data.cgc_prediction != null ? Number(data.cgc_prediction) : null,
     imageCount: (data.image_count as number | null) ?? 1,
+    identifiedCard: extractStoredIdentifiedCard(data.raw_ai_response),
   };
 
   return NextResponse.json(prefill);
