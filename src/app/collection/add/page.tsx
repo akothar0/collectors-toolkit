@@ -35,16 +35,20 @@ function AddCardForm() {
   const queryCompany = searchParams.get('company') ?? undefined;
   const queryPlayer = searchParams.get('player') ?? '';
   const queryYear = searchParams.get('year') ?? '';
+  const querySport = searchParams.get('sport') ?? 'Baseball';
   const querySet = searchParams.get('setName') ?? searchParams.get('set') ?? '';
+  const queryCardNumber = searchParams.get('cardNumber') ?? '';
+  const queryParallel = searchParams.get('parallel') ?? '';
+  const queryPurchasePrice = searchParams.get('purchasePrice') ?? '';
   const queryCert = searchParams.get('cert') ?? '';
 
   const [player, setPlayer] = useState(queryPlayer);
   const [cardId, setCardId] = useState<string | null>(null);
   const [year, setYear] = useState(queryYear);
-  const [sport, setSport] = useState<string>('Baseball');
+  const [sport, setSport] = useState<string>(querySport);
   const [setName, setSetName] = useState(querySet);
-  const [cardNumber, setCardNumber] = useState('');
-  const [parallel, setParallel] = useState('');
+  const [cardNumber, setCardNumber] = useState(queryCardNumber);
+  const [parallel, setParallel] = useState(queryParallel);
   const [isRookie, setIsRookie] = useState(false);
   const [isAutograph, setIsAutograph] = useState(false);
   const [conditionType, setConditionType] = useState<'raw' | 'graded'>('raw');
@@ -52,7 +56,7 @@ function AddCardForm() {
   const [gradingCompanyOther, setGradingCompanyOther] = useState('');
   const [grade, setGrade] = useState<number | null>(null);
   const [certNumber, setCertNumber] = useState('');
-  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState(queryPurchasePrice);
   const [purchaseDate, setPurchaseDate] = useState(todayIsoDate());
   const [purchaseSource, setPurchaseSource] = useState<string>('');
   const [purchaseUrl, setPurchaseUrl] = useState('');

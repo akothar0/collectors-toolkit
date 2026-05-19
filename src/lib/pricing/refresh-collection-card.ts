@@ -32,6 +32,8 @@ export type CollectionCardPricingRow = {
   condition_type: string;
   grade: number | null;
   grading_company: string | null;
+  purchase_price: number | null;
+  grade_session_id: string | null;
   latest_price_snapshot_id: string | null;
   cards?: {
     id: string;
@@ -45,14 +47,22 @@ export type CollectionCardPricingRow = {
     source: string | null;
     source_id: string | null;
   } | null;
+  raw_grade_sessions?: {
+    id: string;
+    predicted_grade: number | null;
+    psa_prediction: number | null;
+  } | null;
 };
 
 const COLLECTION_PRICING_SELECT = `
   id, card_id,
   override_player, override_year, override_set_name, override_parallel, override_card_number,
-  sport, condition_type, grade, grading_company, latest_price_snapshot_id,
+  sport, condition_type, grade, grading_company, purchase_price, grade_session_id, latest_price_snapshot_id,
   cards (
     id, player, year, set_name, card_number, parallel, manufacturer, sport, source, source_id
+  ),
+  raw_grade_sessions (
+    id, predicted_grade, psa_prediction
   )
 `;
 
@@ -66,6 +76,9 @@ export function mapCollectionPricingRow(row: Record<string, unknown>): Collectio
   return {
     ...(row as CollectionCardPricingRow),
     cards: normalizeJoin(row.cards as CollectionCardPricingRow['cards']),
+    raw_grade_sessions: normalizeJoin(
+      row.raw_grade_sessions as CollectionCardPricingRow['raw_grade_sessions']
+    ),
   };
 }
 

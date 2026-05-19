@@ -3,7 +3,15 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Eyebrow, Rule } from '@/components/editorial';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { GradeProfitabilityTable } from '@/components/GradeProfitabilityTable';
+import { PlayerAutocomplete } from '@/components/PlayerAutocomplete';
+import { Button, Eyebrow, Rule } from '@/components/editorial';
+import { SPORTS } from '@/lib/collection';
+import { formatPrice } from '@/lib/collection-presenter';
+import { readJsonResponse } from '@/lib/http-json';
+import type { GradeProfitabilityPayload, PsaFeeTier } from '@/lib/grading-roi';
 import type { GradeResult as GradeResultData, GradingCompanyPrediction } from '@/lib/grader';
 
 type GradeResultProps = {
@@ -51,8 +59,74 @@ function gradeCircleColor(g: number) {
 
 export function GradeResult({ result, onReset }: GradeResultProps) {
   const collectionCompany = result.submissionCompany ?? 'PSA';
-  const collectionHref = `/collection/add?grade=${result.psaPrediction}&company=${collectionCompany}&session=${result.sessionId}`;
+  const [player, setPlayer] = useState('');
+  const [year, setYear] = useState('');
+  const [sport, setSport] = useState('Baseball');
+  const [setName, setSetName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [parallel, setParallel] = useState('');
+  const [rawPrice, setRawPrice] = useState('');
+  const [feeTier, setFeeTier] = useState<PsaFeeTier>('economy');
+  const [roiPayload, setRoiPayload] = useState<GradeProfitabilityPayload | null>(null);
+  const [roiLoading, setRoiLoading] = useState(false);
+  const [roiError, setRoiError] = useState('');
   const thumbnails = [result.frontImageUrl, result.backImageUrl].filter((u): u is string => Boolean(u));
+
+  const collectionHref = `/collection/add?grade=${result.psaPrediction}&company=${collectionCompany}&session=${result.sessionId}&player=${encodeURIComponent(
+    player
+  )}&year=${encodeURIComponent(year)}&sport=${encodeURIComponent(
+    sport
+  )}&setName=${encodeURIComponent(setName)}&cardNumber=${encodeURIComponent(
+    cardNumber
+  )}&parallel=${encodeURIComponent(parallel)}&purchasePrice=${encodeURIComponent(rawPrice)}`;
+
+  async function handleCalculateProfitability() {
+    const parsedRawPrice = Number.parseFloat(rawPrice);
+    if (!player.trim() || !setName.trim() || !year.trim() || !sport.trim()) {
+      setRoiError('Add player, year, sport, and set name to calculate profitability.');
+      return;
+    }
+    if (!Number.isFinite(parsedRawPrice)) {
+      setRoiError('Enter a raw price to calculate profitability.');
+      return;
+    }
+
+    setRoiLoading(true);
+    setRoiError('');
+    try {
+      const response = await fetch('/api/grader/roi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: result.sessionId,
+          card: {
+            player: player.trim(),
+            year: Number.parseInt(year, 10),
+            setName: setName.trim(),
+            cardNumber: cardNumber.trim() || null,
+            parallel: parallel.trim() || null,
+            sport,
+            manufacturer: null,
+          },
+          rawPrice: parsedRawPrice,
+          feeTier,
+        }),
+      });
+
+      const data = await readJsonResponse<GradeProfitabilityPayload & { error?: string }>(response);
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Unable to calculate profitability.');
+      }
+      setRoiPayload(data);
+    } catch (error) {
+      setRoiPayload(null);
+      setRoiError(
+        error instanceof Error ? error.message : 'Unable to calculate profitability.'
+      );
+    } finally {
+      setRoiLoading(false);
+    }
+  }
 
   return (
     <div className="rounded border border-rule bg-surface overflow-hidden">
@@ -166,6 +240,134 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             className="inline-flex h-10 flex-1 items-center justify-center rounded border border-rule px-5 text-[13px] font-medium text-ink hover:bg-surface-2">
             Grade another
           </button>
+        </div>
+
+        <Rule />
+        <div className="space-y-4">
+          <div>
+            <Eyebrow className="mb-2">Grade profitability</Eyebrow>
+            <p className="font-serif italic text-[24px] leading-none text-ink">
+              Pull PSA 8, 9, and 10 outcomes from one cached CardSight record.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <PlayerAutocomplete
+                value={player}
+                onChange={setPlayer}
+                onSelectCard={(card) => {
+                  if (card.year) setYear(String(card.year));
+                  if (card.set_name) setSetName(card.set_name);
+                }}
+                required
+              />
+            </div>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Year
+              </span>
+              <input
+                type="number"
+                min={1900}
+                max={2030}
+                value={year}
+                onChange={(event) => setYear(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Sport
+              </span>
+              <select
+                value={sport}
+                onChange={(event) => setSport(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              >
+                {SPORTS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Set name
+              </span>
+              <input
+                type="text"
+                value={setName}
+                onChange={(event) => setSetName(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Card number
+              </span>
+              <input
+                type="text"
+                value={cardNumber}
+                onChange={(event) => setCardNumber(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Parallel
+              </span>
+              <input
+                type="text"
+                value={parallel}
+                onChange={(event) => setParallel(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Raw price
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={rawPrice}
+                onChange={(event) => setRawPrice(event.target.value)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                PSA fee tier
+              </span>
+              <select
+                value={feeTier}
+                onChange={(event) => setFeeTier(event.target.value as PsaFeeTier)}
+                className="mt-2 h-11 w-full rounded border border-rule bg-surface-2 px-4 text-sm text-ink outline-none focus:border-ink"
+              >
+                <option value="economy">PSA Economy · {formatPrice(20)}</option>
+                <option value="value">PSA Value · {formatPrice(50)}</option>
+                <option value="regular">PSA Regular · {formatPrice(100)}</option>
+              </select>
+            </label>
+          </div>
+
+          <Button type="button" onClick={handleCalculateProfitability} disabled={roiLoading}>
+            {roiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Calculate grading profit
+          </Button>
+
+          {roiError ? <p className="font-mono text-[11px] text-negative">{roiError}</p> : null}
+          {roiPayload ? <GradeProfitabilityTable payload={roiPayload} /> : null}
         </div>
 
         {/* Disclaimer */}

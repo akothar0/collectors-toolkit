@@ -15,6 +15,7 @@ import { makePendingCollectionPhotos, type PendingCollectionPhoto, uploadCollect
 import { displayPlayer, displaySetName, formatDateLabel, formatGainLoss, formatGradeBadge, formatPrice } from '@/lib/collection-presenter';
 import { MarketCompsSection } from '@/components/pricing/MarketCompsSection';
 import { PriceHistorySparkline } from '@/components/pricing/PriceHistorySparkline';
+import { GradeProfitabilitySection } from '@/components/pricing/GradeProfitabilitySection';
 import { getCertUrl } from '@/lib/cert-number';
 import { readJsonResponse } from '@/lib/http-json';
 
@@ -333,6 +334,14 @@ export default function CollectionCardDetailPage() {
               purchaseDate={card.purchaseDate}
               purchasePrice={card.purchasePrice}
             />
+
+            {card.conditionType === 'raw' ? (
+              <GradeProfitabilitySection
+                collectionCardId={card.id}
+                initialRawPrice={card.purchasePrice}
+                hasPrediction={Boolean(card.gradeSessionId)}
+              />
+            ) : null}
 
             {/* Notes */}
             <label className="block">
