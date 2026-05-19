@@ -1,6 +1,7 @@
 import { openai } from '@/lib/openai';
 import type { ParsedImportItem } from './types';
 import { extractFirstArray } from './extract-utils';
+import { fileToDataUrl } from './file-data-url';
 
 type RawRow = {
   title?: unknown;
@@ -30,7 +31,8 @@ Return a JSON object with key "items" containing the array.
 Skip order total lines, shipping charges, and any line that is not a card purchase.
 If text is cut off, include whatever is visible.`;
 
-export async function parseEbayScreenshot(imageUrl: string): Promise<ParsedImportItem[]> {
+export async function parseEbayScreenshot(file: File): Promise<ParsedImportItem[]> {
+  const imageUrl = await fileToDataUrl(file);
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
