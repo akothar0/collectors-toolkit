@@ -3,8 +3,10 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { BadgeCheck, ExternalLink, Loader2, RotateCcw, Save, Search, X } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Loader2, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
+import { Eyebrow, Rule } from '@/components/editorial';
 import { readJsonResponse } from '@/lib/http-json';
 import { getCertUrl } from '@/lib/cert-number';
 import {
@@ -38,19 +40,8 @@ type ScanResultProps = {
 };
 
 function resolveGraderInput(scan: ScannerResult): OcrGradingCompany {
-  if (scan.ocrGradingCompany && scan.ocrGradingCompany !== 'UNKNOWN') {
-    return scan.ocrGradingCompany;
-  }
-
-  if (
-    scan.gradingCompany === 'PSA' ||
-    scan.gradingCompany === 'BGS' ||
-    scan.gradingCompany === 'SGC' ||
-    scan.gradingCompany === 'CGC'
-  ) {
-    return scan.gradingCompany;
-  }
-
+  if (scan.ocrGradingCompany && scan.ocrGradingCompany !== 'UNKNOWN') return scan.ocrGradingCompany;
+  if (scan.gradingCompany === 'PSA' || scan.gradingCompany === 'BGS' || scan.gradingCompany === 'SGC' || scan.gradingCompany === 'CGC') return scan.gradingCompany;
   return 'PSA';
 }
 
@@ -94,44 +85,24 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
     const qs = params.toString();
     return `/collection/add${qs ? `?${qs}` : ''}`;
   }, [result]);
-  const certUrl = useMemo(
-    () => getCertUrl(result.gradingCompany, result.certNumber),
-    [result.gradingCompany, result.certNumber]
-  );
+  const certUrl = useMemo(() => getCertUrl(result.gradingCompany, result.certNumber), [result.gradingCompany, result.certNumber]);
   const hasImage = Boolean(result.imageUrl?.trim());
   const alreadySaved = Boolean(result.savedToCollection || result.collectionCardId);
 
   async function lookupCert() {
-    if (!certInput.trim()) {
-      setLookupError('Enter your cert number.');
-      return;
-    }
-
+    if (!certInput.trim()) { setLookupError('Enter your cert number.'); return; }
     setLookupLoading(true);
     setLookupError('');
-
     try {
       const formData = new FormData();
       formData.set('manualCertNumber', certInput.trim());
       formData.set('manualGradingCompany', graderInput);
-      if (result.imageUrl) {
-        formData.set('imageUrl', result.imageUrl);
-      }
-
-      const response = await fetch('/api/scanner/scan', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const nextResult = await readJsonResponse<ScannerResult & { remainingScans?: number }>(response);
-      if (!response.ok) {
-        throw new Error(nextResult.error ?? 'Cert lookup failed.');
-      }
-
-      setResult(nextResult);
-      if (typeof nextResult.remainingScans === 'number') {
-        onQuotaUpdate?.(nextResult.remainingScans);
-      }
+      if (result.imageUrl) formData.set('imageUrl', result.imageUrl);
+      const r = await fetch('/api/scanner/scan', { method: 'POST', body: formData });
+      const next = await readJsonResponse<ScannerResult & { remainingScans?: number }>(r);
+      if (!r.ok) throw new Error(next.error ?? 'Cert lookup failed.');
+      setResult(next);
+      if (typeof next.remainingScans === 'number') onQuotaUpdate?.(next.remainingScans);
     } catch (error) {
       setLookupError(error instanceof Error ? error.message : 'Cert lookup failed.');
     } finally {
@@ -141,38 +112,23 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
 
   async function saveToCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!result.certLookupSuccess || alreadySaved) {
-      return;
-    }
-
+    if (!result.certLookupSuccess || alreadySaved) return;
     setSaveLoading(true);
     setSaveError('');
     setSaveSuccess('');
-
     try {
-      const response = await fetch('/api/collection', {
+      const r = await fetch('/api/collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scanId: result.scanId,
-          imageUrl: result.imageUrl,
-          cardId: result.cardId,
-          player: result.cardPlayer,
-          year: result.cardYear,
-          setName: result.cardSet ?? result.cardManufacturer,
-          parallel: result.cardParallel,
-          cardNumber: result.cardNumber,
-          sport: result.cardSport,
-          manufacturer: result.cardManufacturer,
-          certNumber: result.certNumber,
-          gradingCompany: result.gradingCompany,
-          grade: result.officialGrade,
-          gradeDescription: result.gradeDescription,
-          qualifierCode: result.qualifierCode,
-          autographGrade: result.autographGrade,
-          subGrades: result.subGrades,
-          popAtGrade: result.popAtGrade,
-          popHigher: result.popHigher,
+          scanId: result.scanId, imageUrl: result.imageUrl, cardId: result.cardId,
+          player: result.cardPlayer, year: result.cardYear,
+          setName: result.cardSet ?? result.cardManufacturer, parallel: result.cardParallel,
+          cardNumber: result.cardNumber, sport: result.cardSport, manufacturer: result.cardManufacturer,
+          certNumber: result.certNumber, gradingCompany: result.gradingCompany,
+          grade: result.officialGrade, gradeDescription: result.gradeDescription,
+          qualifierCode: result.qualifierCode, autographGrade: result.autographGrade,
+          subGrades: result.subGrades, popAtGrade: result.popAtGrade, popHigher: result.popHigher,
           conditionType: 'graded',
           purchasePrice: purchasePrice.trim() ? Number.parseFloat(purchasePrice) : null,
           purchaseDate: purchaseDate.trim() || null,
@@ -180,21 +136,9 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
           notes: notes.trim() || null,
         }),
       });
-
-      const json = await readJsonResponse<{
-        error?: string;
-        collectionCardId?: string;
-        alreadySaved?: boolean;
-      }>(response);
-      if (!response.ok) {
-        throw new Error(json.error ?? 'Unable to save.');
-      }
-
-      setResult({
-        ...result,
-        savedToCollection: true,
-        collectionCardId: json.collectionCardId ?? result.collectionCardId,
-      });
+      const json = await readJsonResponse<{ error?: string; collectionCardId?: string; alreadySaved?: boolean }>(r);
+      if (!r.ok) throw new Error(json.error ?? 'Unable to save.');
+      setResult({ ...result, savedToCollection: true, collectionCardId: json.collectionCardId ?? result.collectionCardId });
       setSaveSuccess('Saved to your collection.');
       setSaveOverlayOpen(false);
     } catch (error) {
@@ -205,264 +149,207 @@ export function ScanResult({ scan, onTryAgain, onQuotaUpdate, readOnly = false }
   }
 
   return (
-    <section className="relative overflow-hidden rounded border border-ink-700 bg-ink-900">
-      <ResultHeader result={result} onTryAgain={readOnly ? undefined : onTryAgain} />
+    <div className="relative overflow-hidden rounded border border-rule bg-surface">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule px-6 py-4">
+        <div>
+          <Eyebrow>Scan result</Eyebrow>
+          <p className="mt-1 text-[13px] text-ink-2">
+            {result.certLookupSuccess
+              ? getVerificationHeadline(result)
+              : `Confirm your ${getGraderLabel(result.gradingCompany ?? result.ocrGradingCompany)} cert number`}
+          </p>
+        </div>
+        {onTryAgain && (
+          <button type="button" onClick={onTryAgain}
+            className="font-mono text-[11px] text-ink-3 hover:text-ink">
+            Scan another →
+          </button>
+        )}
+      </div>
 
-      <ScanGrid>
-        <div className="border-b border-ink-800 bg-ink-950 p-4 lg:border-b-0 lg:border-r">
+      {/* Main grid */}
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        {/* Left — image */}
+        <div className="border-b border-rule bg-paper p-4 lg:border-b-0 lg:border-r">
           {hasImage ? (
-            <img
-              src={result.imageUrl}
-              alt="Scanned slab"
-              className="h-[280px] w-full rounded object-cover lg:h-full lg:min-h-[360px]"
-            />
+            <img src={result.imageUrl} alt="Scanned slab"
+              className="h-[260px] w-full rounded object-cover lg:h-full lg:min-h-[340px]" />
           ) : (
-            <div className="flex h-[280px] items-center justify-center rounded bg-ink-900 text-sm text-ash-500">
+            <div className="flex h-[260px] items-center justify-center rounded border border-rule text-[13px] text-ink-3">
               No slab photo
             </div>
           )}
         </div>
 
+        {/* Right — result details */}
         <div className="space-y-5 p-6">
           {result.certLookupSuccess && title ? (
-            <VerifiedSummary
-              scan={result}
-              title={title}
-              subtitle={subtitle}
-              grade={result.officialGrade}
-              gradeDescription={result.gradeDescription}
-              certNumber={result.certNumber}
-              certUrl={certUrl}
-            />
+            <VerifiedSummary scan={result} title={title} subtitle={subtitle}
+              grade={result.officialGrade} gradeDescription={result.gradeDescription}
+              certNumber={result.certNumber} certUrl={certUrl} />
           ) : (
             <PendingSummary
-              certInput={certInput}
-              graderInput={graderInput}
-              confidence={result.ocrConfidence}
-              gradingCompany={result.gradingCompany ?? result.ocrGradingCompany}
-              error={result.error}
-              lookupError={lookupError}
-              lookupLoading={lookupLoading}
+              certInput={certInput} graderInput={graderInput}
+              confidence={result.ocrConfidence} gradingCompany={result.gradingCompany ?? result.ocrGradingCompany}
+              error={result.error} lookupError={lookupError} lookupLoading={lookupLoading}
               ocrCert={result.ocrCertNumber}
               certUrl={getCertUrl(graderInput, certInput || result.ocrCertNumber)}
-              showCertPrompt={showCertPrompt}
-              readOnly={readOnly}
-              onCertChange={setCertInput}
-              onGraderChange={setGraderInput}
-              onLookup={lookupCert}
+              showCertPrompt={showCertPrompt} readOnly={readOnly}
+              onCertChange={setCertInput} onGraderChange={setGraderInput} onLookup={lookupCert}
             />
           )}
 
-          {alreadySaved && !readOnly ? (
-            <div className="space-y-1 border-t border-ink-800 pt-4">
-              <p className="text-sm font-medium text-emerald-400">In your collection</p>
-              <Link href="/collection" className="text-sm font-medium text-brand-500 hover:text-brand-400 hover:underline underline-offset-4">
-                View →
-              </Link>
-            </div>
-          ) : null}
-          {saveSuccess && !readOnly && !alreadySaved ? (
-            <p className="border-t border-ink-800 pt-4 text-sm text-emerald-400">
-              Saved.{' '}
-              <Link href="/collection" className="font-medium text-brand-500 hover:underline underline-offset-4">
-                View in collection →
-              </Link>
-            </p>
-          ) : null}
-        </div>
-      </ScanGrid>
+          {result.collectionCardId && (
+            <MarketPricingPanel collectionCardId={result.collectionCardId} />
+          )}
 
-      {!readOnly ? (
-        <div className="flex flex-col gap-3 border-t border-ink-700 p-6 sm:flex-row sm:items-center">
-          <Link
-            href={collectionAddHref as Route}
-            className="inline-flex h-11 flex-1 items-center justify-center rounded bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-400"
-          >
-            Add to Collection
+          {alreadySaved && !readOnly && (
+            <div className="border-t border-rule pt-4">
+              <p className="text-[13px] font-medium text-positive">In your collection.</p>
+              <Link href="/collection" className="font-mono text-[11px] text-accent hover:underline">View →</Link>
+            </div>
+          )}
+          {saveSuccess && !readOnly && !alreadySaved && (
+            <p className="border-t border-rule pt-4 text-[13px] text-positive">
+              Saved.{' '}
+              <Link href="/collection" className="font-mono text-[11px] text-accent hover:underline">View in collection →</Link>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      {!readOnly && (
+        <div className="flex flex-col gap-3 border-t border-rule p-5 sm:flex-row sm:items-center">
+          <Link href={collectionAddHref as Route}
+            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-ink px-5 text-[13px] font-medium text-paper hover:bg-ink/90">
+            Add to collection
           </Link>
           <div className="flex items-center gap-4">
-            {!alreadySaved ? (
-              <button
-                type="button"
-                onClick={() => setSaveOverlayOpen(true)}
-                className="text-sm font-medium text-brand-500 hover:text-brand-400 hover:underline underline-offset-4"
-              >
-                or save with notes →
+            {!alreadySaved && (
+              <button type="button" onClick={() => setSaveOverlayOpen(true)}
+                className="font-mono text-[11px] text-ink-3 hover:text-ink">
+                save with notes →
               </button>
-            ) : null}
-            {onTryAgain ? (
-              <button
-                type="button"
-                onClick={onTryAgain}
-                className="text-sm font-medium text-ash-400 hover:text-ash-200 hover:underline underline-offset-4"
-              >
-                Scan another →
+            )}
+            {onTryAgain && (
+              <button type="button" onClick={onTryAgain}
+                className="font-mono text-[11px] text-ink-3 hover:text-ink">
+                scan another →
               </button>
-            ) : null}
+            )}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {saveOverlayOpen ? (
-        <SaveOverlay
-          purchasePrice={purchasePrice}
-          purchaseDate={purchaseDate}
-          purchaseSource={purchaseSource}
-          notes={notes}
-          saveLoading={saveLoading}
-          saveError={saveError}
-          onClose={() => setSaveOverlayOpen(false)}
-          onPurchasePriceChange={setPurchasePrice}
-          onPurchaseDateChange={setPurchaseDate}
-          onPurchaseSourceChange={setPurchaseSource}
-          onNotesChange={setNotes}
-          onSubmit={saveToCollection}
-        />
-      ) : null}
-    </section>
-  );
-}
-
-function ScanGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">{children}</div>;
-}
-
-function ScanSaveSection({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-3 border-t border-ink-800 pt-5">{children}</div>;
-}
-
-function ResultHeader({ result, onTryAgain }: { result: ScannerResult; onTryAgain?: () => void }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-800 px-6 py-4">
-      <ResultHeaderCopy result={result} />
-      {onTryAgain ? (
-        <button
-          type="button"
-          onClick={onTryAgain}
-          className="text-sm font-medium text-ash-400 hover:text-ash-200 hover:underline underline-offset-4"
-        >
-          Scan another →
-        </button>
-      ) : null}
+      {/* Save overlay */}
+      {saveOverlayOpen && (
+        <div className="absolute inset-0 z-10 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
+          <form onSubmit={saveToCollection}
+            className="w-full max-w-md space-y-4 rounded border border-rule bg-surface p-6 shadow-popover">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif italic text-[20px] text-ink">Save to collection</h3>
+              <button type="button" onClick={() => setSaveOverlayOpen(false)}
+                className="rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {[
+              { label: 'Purchase price ($)', type: 'number', value: purchasePrice, onChange: setPurchasePrice, placeholder: 'Optional', inputMode: 'decimal' as const },
+              { label: 'Date purchased', type: 'date', value: purchaseDate, onChange: setPurchaseDate, placeholder: '' },
+            ].map(f => (
+              <label key={f.label} className="block space-y-1">
+                <Eyebrow>{f.label}</Eyebrow>
+                <input type={f.type} value={f.value} onChange={e => f.onChange(e.target.value)}
+                  placeholder={f.placeholder}
+                  className="h-10 w-full rounded border border-rule bg-surface-2 px-3 text-[13px] text-ink placeholder:text-ink-3 outline-none focus:border-ink" />
+              </label>
+            ))}
+            <label className="block space-y-1">
+              <Eyebrow>Purchased from</Eyebrow>
+              <select value={purchaseSource} onChange={e => setPurchaseSource(e.target.value)}
+                className="h-10 w-full rounded border border-rule bg-surface-2 px-3 text-[13px] text-ink outline-none focus:border-ink">
+                <option value="">Optional</option>
+                {PURCHASE_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <Eyebrow>Notes</Eyebrow>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                placeholder="Optional"
+                className="w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 outline-none focus:border-ink" />
+            </label>
+            {saveError && <p className="font-mono text-[11px] text-negative">{saveError}</p>}
+            <button type="submit" disabled={saveLoading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-ink px-5 py-2.5 text-[13px] font-medium text-paper hover:bg-ink/90 disabled:opacity-50">
+              {saveLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Save
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
 
-function ResultHeaderCopy({ result }: { result: ScannerResult }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Scan Result</p>
-      <p className="mt-1 text-sm text-ash-400">
-        {result.certLookupSuccess
-          ? getVerificationHeadline(result)
-          : `Confirm your ${getGraderLabel(result.gradingCompany ?? result.ocrGradingCompany)} cert number`}
-      </p>
-    </div>
-  );
-}
+// ── Verified summary (cert lookup succeeded) ──────────────────────────────
 
-function VerifiedSummary({
-  scan,
-  title,
-  subtitle,
-  grade,
-  gradeDescription,
-  certNumber,
-  certUrl,
-}: {
-  scan: ScannerResult;
-  title: string;
-  subtitle: string | null;
-  grade: number | null;
-  gradeDescription: string | null;
-  certNumber: string | null;
-  certUrl: string | null;
+function VerifiedSummary({ scan, title, subtitle, grade, gradeDescription, certNumber, certUrl }: {
+  scan: ScannerResult; title: string; subtitle: string | null;
+  grade: number | null; gradeDescription: string | null;
+  certNumber: string | null; certUrl: string | null;
 }) {
   const subGradesLabel = formatSubGradesLabel(scan.subGrades);
 
   return (
     <div className="space-y-4">
-      <VerificationBanner scan={scan} />
-      <SummaryTop title={title} subtitle={subtitle} grade={grade} gradingCompany={scan.gradingCompany} />
-      {gradeDescription ? (
-        <p className="text-sm text-ash-300">{formatCatalogText(gradeDescription)}</p>
-      ) : null}
-      {subGradesLabel ? <p className="text-sm font-medium text-ash-200">Subgrades: {subGradesLabel}</p> : null}
-      <VerifiedStats scan={scan} />
-      <div className="rounded bg-ink-800 px-4 py-3">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ash-500">
-          {getCertRegistryLabel(scan.gradingCompany)}
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <p className="text-lg font-semibold tracking-tight text-ash-50">{certNumber}</p>
-          {certUrl ? (
-            <a
-              href={certUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand-500 hover:underline"
-            >
-              {getCertLinkLabel(scan.gradingCompany)}
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : null}
+      {/* Verification badge */}
+      <div className="flex gap-3 rounded border border-positive/30 bg-positive/5 px-4 py-3" role="status">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-positive text-white">
+          <BadgeCheck className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-[13px] font-medium text-positive">{getVerificationHeadline(scan)}</p>
+          <p className="text-[12px] text-positive/70">{getVerificationDetail(scan)}</p>
         </div>
       </div>
-    </div>
-  );
-}
 
-function VerificationBanner({ scan }: { scan: ScannerResult }) {
-  return (
-    <div
-      className="flex gap-3 rounded border border-emerald-800 bg-emerald-950 px-4 py-4"
-      role="status"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-emerald-500 text-white">
-        <BadgeCheck className="h-4 w-4" aria-hidden />
+      {/* Player + grade */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-serif italic text-[28px] leading-tight text-ink">{title}</h2>
+          {subtitle && <p className="mt-0.5 font-mono text-[11px] text-ink-3">{subtitle}</p>}
+        </div>
+        <div className="shrink-0 rounded border border-accent/30 bg-accent/5 px-4 py-3 text-right">
+          <Eyebrow tone="accent">{getGraderLabel(scan.gradingCompany)}</Eyebrow>
+          <p className="mt-1 font-serif italic text-[32px] leading-none text-ink">{formatGradeValue(grade)}</p>
+        </div>
       </div>
-      <div className="min-w-0 space-y-1">
-        <p className="text-sm font-semibold text-emerald-300">{getVerificationHeadline(scan)}</p>
-        <p className="text-sm leading-6 text-emerald-400/80">{getVerificationDetail(scan)}</p>
-      </div>
-    </div>
-  );
-}
 
-function SummaryTop({
-  title,
-  subtitle,
-  grade,
-  gradingCompany,
-}: {
-  title: string;
-  subtitle: string | null;
-  grade: number | null;
-  gradingCompany: string | null;
-}) {
-  return (
-    <SummaryTopLayout title={title} subtitle={subtitle} grade={grade} gradingCompany={gradingCompany} />
-  );
-}
+      {gradeDescription && (
+        <p className="text-[13px] text-ink-2">{formatCatalogText(gradeDescription)}</p>
+      )}
+      {subGradesLabel && (
+        <p className="font-mono text-[11px] text-ink-3">Sub-grades: {subGradesLabel}</p>
+      )}
 
-function SummaryTopLayout({
-  title,
-  subtitle,
-  grade,
-  gradingCompany,
-}: {
-  title: string;
-  subtitle: string | null;
-  grade: number | null;
-  gradingCompany: string | null;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-ash-50">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-ash-400">{subtitle}</p> : null}
+      {/* Pop stats */}
+      <VerifiedStats scan={scan} />
+
+      {/* Cert */}
+      <div className="rounded border border-rule bg-surface-2 px-4 py-3">
+        <Eyebrow className="mb-1">{getCertRegistryLabel(scan.gradingCompany)}</Eyebrow>
+        <div className="flex items-center gap-3">
+          <p className="font-mono text-[18px] font-semibold text-ink">{certNumber}</p>
+          {certUrl && (
+            <a href={certUrl} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-accent hover:underline">
+              {getCertLinkLabel(scan.gradingCompany)} <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
       </div>
-      <GradeBadge grade={grade} gradingCompany={gradingCompany} />
     </div>
   );
 }
@@ -470,278 +357,91 @@ function SummaryTopLayout({
 function VerifiedStats({ scan }: { scan: ScannerResult }) {
   const category = getVerifiedCategoryLabel(scan);
   const autographLabel = formatAutographGradeLabel(scan.autographGrade);
-  const showPopulation = hasRegistryPopulationStats(scan);
+  const showPop = hasRegistryPopulationStats(scan);
   const popAtGrade = formatPopCount(scan.popAtGrade);
   const popHigher = formatPopCount(scan.popHigher);
   const popWithQualifier = formatPopCount(scan.popWithQualifier);
-  const showPopWithQualifier =
-    scan.gradingCompany === 'PSA' &&
-    scan.popWithQualifier !== null &&
-    scan.popWithQualifier > 0 &&
-    popWithQualifier !== null;
-  const popLabel =
-    scan.gradingCompany === 'PSA'
-      ? 'PSA population'
-      : scan.gradingCompany === 'BGS'
-        ? 'BGS population'
-        : 'Population at grade';
+  const showPopQ = scan.gradingCompany === 'PSA' && (scan.popWithQualifier ?? 0) > 0 && popWithQualifier !== null;
 
-  if (!category && !showPopulation && !autographLabel) {
-    return null;
-  }
+  if (!category && !showPop && !autographLabel) return null;
 
   return (
     <div className="space-y-3">
-      {category ? (
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ash-500">{category}</p>
-      ) : null}
-      {showPopulation ? (
-        <div
-          className={`grid gap-3 ${showPopWithQualifier ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}
-        >
-          {popAtGrade !== null ? <StatCard label={popLabel} value={popAtGrade} /> : null}
-          {popHigher !== null ? <StatCard label="Pop higher" value={popHigher} /> : null}
-          {showPopWithQualifier ? <StatCard label="Pop w/ qualifier" value={popWithQualifier} /> : null}
+      {category && <Eyebrow>{category}</Eyebrow>}
+      {showPop && (
+        <div className={`grid gap-2 ${showPopQ ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {popAtGrade != null && <PopCell label={scan.gradingCompany === 'PSA' ? 'PSA pop' : scan.gradingCompany === 'BGS' ? 'BGS pop' : 'Pop at grade'} value={popAtGrade} />}
+          {popHigher != null && <PopCell label="Pop higher" value={popHigher} />}
+          {showPopQ && <PopCell label="Pop w/ qualifier" value={popWithQualifier!} />}
         </div>
-      ) : null}
-      {autographLabel ? <p className="text-sm font-medium text-ash-200">{autographLabel}</p> : null}
+      )}
+      {autographLabel && <p className="font-mono text-[11px] text-ink-2">{autographLabel}</p>}
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function PopCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded bg-ink-800 px-4 py-3 ring-1 ring-ink-800">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ash-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight text-ash-50">{value}</p>
+    <div className="rounded border border-rule bg-surface-2 px-3 py-2.5">
+      <Eyebrow className="mb-1">{label}</Eyebrow>
+      <p className="font-serif italic text-[28px] leading-none text-ink">{value}</p>
     </div>
   );
 }
 
-function GradeBadge({ grade, gradingCompany }: { grade: number | null; gradingCompany: string | null }) {
-  return (
-    <div className="shrink-0 rounded border border-brand-700 bg-brand-900/20 px-4 py-3 text-right">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-brand-500">
-        {getGraderLabel(gradingCompany)}
-      </p>
-      <p className="tabular-nums text-3xl font-semibold text-ash-50">{formatGradeValue(grade)}</p>
-    </div>
-  );
-}
+// ── Pending summary (cert lookup failed / manual mode) ────────────────────
 
-function PendingSummary({
-  certInput,
-  graderInput,
-  confidence,
-  gradingCompany,
-  error,
-  lookupError,
-  lookupLoading,
-  ocrCert,
-  certUrl,
-  showCertPrompt,
-  readOnly,
-  onCertChange,
-  onGraderChange,
-  onLookup,
-}: {
-  certInput: string;
-  graderInput: OcrGradingCompany;
-  confidence: ScannerResult['ocrConfidence'];
-  gradingCompany: string | null;
-  error?: string;
-  lookupError: string;
-  lookupLoading: boolean;
-  ocrCert: string | null;
-  certUrl: string | null;
-  showCertPrompt: boolean;
-  readOnly?: boolean;
-  onCertChange: (value: string) => void;
-  onGraderChange: (value: OcrGradingCompany) => void;
-  onLookup: () => void;
+function PendingSummary({ certInput, graderInput, confidence, gradingCompany, error, lookupError,
+  lookupLoading, ocrCert, certUrl, showCertPrompt, readOnly,
+  onCertChange, onGraderChange, onLookup }: {
+  certInput: string; graderInput: OcrGradingCompany; confidence: ScannerResult['ocrConfidence'];
+  gradingCompany: string | null; error?: string; lookupError: string; lookupLoading: boolean;
+  ocrCert: string | null; certUrl: string | null; showCertPrompt: boolean; readOnly?: boolean;
+  onCertChange: (v: string) => void; onGraderChange: (v: OcrGradingCompany) => void; onLookup: () => void;
 }) {
   const graderLabel = getGraderLabel(gradingCompany ?? graderInput);
-
   return (
     <div className="space-y-4">
-      {error ? (
-        <p
-          className={`text-sm leading-6 ${
-            error.includes('daily limit') ? 'text-rose-800' : 'text-amber-800'
-          }`}
-        >
-          {error}
-        </p>
-      ) : null}
-
-      {showCertPrompt && !readOnly ? (
+      {error && (
+        <p className={`text-[13px] ${error.includes('daily limit') ? 'text-negative' : 'text-warn'}`}>{error}</p>
+      )}
+      {showCertPrompt && !readOnly && (
         <>
-          <p className="text-sm text-ash-300">
+          <p className="text-[13px] text-ink-2">
             {ocrCert
-              ? `${graderLabel} did not recognize the number we read. Confirm the cert below and fetch again.`
+              ? `${graderLabel} did not recognise the number we read. Confirm the cert below and try again.`
               : `Enter your ${graderLabel} cert number to load card details.`}
           </p>
-          {ocrCert ? (
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ash-500">
-              {confidenceLabel(confidence, graderInput)}
-              {ocrCert ? ` · detected ${ocrCert}` : ''}
+          {ocrCert && (
+            <p className="font-mono text-[11px] text-ink-3">
+              {confidenceLabel(confidence, graderInput)}{ocrCert ? ` · detected ${ocrCert}` : ''}
             </p>
-          ) : null}
-          <div className="flex flex-col gap-3">
-            <select
-              value={graderInput}
-              onChange={(event) => onGraderChange(event.target.value as OcrGradingCompany)}
-              className="h-11 rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 outline-none focus:border-brand-500"
-            >
-              {GRADER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
+          )}
+          <div className="space-y-2">
+            <select value={graderInput} onChange={e => onGraderChange(e.target.value as OcrGradingCompany)}
+              className="h-10 w-full rounded border border-rule bg-surface-2 px-3 text-[13px] text-ink outline-none focus:border-ink">
+              {GRADER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                value={certInput}
-                onChange={(event) => onCertChange(event.target.value)}
-                inputMode="numeric"
-                placeholder={`${graderInput} cert number`}
-                className="h-11 flex-1 rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
-              />
-              <button
-                type="button"
-                onClick={onLookup}
-                disabled={lookupLoading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded bg-brand-500 px-5 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-70"
-              >
-                {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Look up cert
+            <div className="flex gap-2">
+              <input value={certInput} onChange={e => onCertChange(e.target.value)}
+                inputMode="numeric" placeholder={`${graderInput} cert number`}
+                className="h-10 flex-1 rounded border border-rule bg-surface-2 px-3 text-[13px] text-ink placeholder:text-ink-3 outline-none focus:border-ink" />
+              <button type="button" onClick={onLookup} disabled={lookupLoading}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90 disabled:opacity-50">
+                {lookupLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                Look up
               </button>
             </div>
           </div>
-          {lookupError ? <p className="text-sm text-rose-400">{lookupError}</p> : null}
-          {certUrl && (error?.includes('daily limit') || lookupError.includes('daily limit')) ? (
-            <a
-              href={certUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand-500 hover:underline"
-            >
-              {getCertLinkLabel(graderInput)}
-              <ExternalLink className="h-3.5 w-3.5" />
+          {lookupError && <p className="font-mono text-[11px] text-negative">{lookupError}</p>}
+          {certUrl && (error?.includes('daily limit') || lookupError.includes('daily limit')) && (
+            <a href={certUrl} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-accent hover:underline">
+              {getCertLinkLabel(graderInput)} <ExternalLink className="h-3 w-3" />
             </a>
-          ) : null}
+          )}
         </>
-      ) : null}
-    </div>
-  );
-}
-
-function SaveOverlay({
-  purchasePrice,
-  purchaseDate,
-  purchaseSource,
-  notes,
-  saveLoading,
-  saveError,
-  onClose,
-  onPurchasePriceChange,
-  onPurchaseDateChange,
-  onPurchaseSourceChange,
-  onNotesChange,
-  onSubmit,
-}: {
-  purchasePrice: string;
-  purchaseDate: string;
-  purchaseSource: string;
-  notes: string;
-  saveLoading: boolean;
-  saveError: string;
-  onClose: () => void;
-  onPurchasePriceChange: (value: string) => void;
-  onPurchaseDateChange: (value: string) => void;
-  onPurchaseSourceChange: (value: string) => void;
-  onNotesChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <div className="absolute inset-0 z-10 flex items-end justify-center bg-ink-950/70 p-4 sm:items-center">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md space-y-4 rounded bg-ink-900 p-6 "
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-ash-50">Save to collection</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 text-ash-500 hover:bg-ink-800 hover:text-ash-300"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ash-500">
-            Purchase price ($)
-          </span>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={purchasePrice}
-            onChange={(event) => onPurchasePriceChange(event.target.value)}
-            placeholder="Optional"
-            className="h-11 w-full rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ash-500">
-            Date purchased
-          </span>
-          <input
-            type="date"
-            value={purchaseDate}
-            onChange={(event) => onPurchaseDateChange(event.target.value)}
-            className="h-11 w-full rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ash-500">
-            Purchased from
-          </span>
-          <select
-            value={purchaseSource}
-            onChange={(event) => onPurchaseSourceChange(event.target.value)}
-            className="h-11 w-full rounded border border-ink-700 bg-ink-800 px-4 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
-          >
-            <option value="">Optional</option>
-            {PURCHASE_SOURCES.map((source) => (
-              <option key={source} value={source}>
-                {source}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ash-500">Notes</span>
-          <textarea
-            value={notes}
-            onChange={(event) => onNotesChange(event.target.value)}
-            rows={3}
-            placeholder="Optional"
-            className="w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500"
-          />
-        </label>
-        {saveError ? <p className="text-sm text-rose-400">{saveError}</p> : null}
-        <button
-          type="submit"
-          disabled={saveLoading}
-          className="inline-flex w-full items-center justify-center gap-2 rounded bg-brand-500 px-5 py-3 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-70"
-        >
-          {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save
-        </button>
-      </form>
+      )}
     </div>
   );
 }

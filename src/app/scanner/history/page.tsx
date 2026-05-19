@@ -46,16 +46,16 @@ export default async function ScannerHistoryPage() {
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-2">
-            <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
+            <h1 className="font-serif italic text-[40px] leading-none tracking-tight text-ink">
               Slab scan history
             </h1>
-            <p className="max-w-2xl text-ash-300">
+            <p className="max-w-2xl text-ink-2">
               Every slab you scan is saved here. Reopen a scan to review details or save it to your collection.
             </p>
           </div>
           <Link
             href="/scanner"
-            className="inline-flex rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
+            className="inline-flex rounded border border-rule px-4 py-2 text-sm font-medium text-ink hover:bg-surface-2"
           >
             New scan
           </Link>
@@ -63,41 +63,41 @@ export default async function ScannerHistoryPage() {
       </div>
 
       {scans.length === 0 ? (
-        <div className="rounded border border-dashed border-ink-700 bg-ink-900 px-8 py-16 text-center ">
-          <p className="text-lg font-medium text-ash-50">No scans yet. Upload a slab photo to get started.</p>
+        <div className="rounded border border-dashed border-rule bg-surface px-8 py-16 text-center ">
+          <p className="text-lg font-medium text-ink">No scans yet. Upload a slab photo to get started.</p>
           <Link
             href="/scanner"
-            className="mt-6 inline-flex rounded bg-brand-500 px-5 py-3 text-sm font-medium text-white hover:bg-brand-400"
+            className="mt-6 inline-flex rounded bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-ink/90"
           >
             Scan a slab
           </Link>
         </div>
       ) : (
-        <ul className="divide-y divide-ink-800 overflow-hidden rounded border border-ink-700 bg-ink-900 ">
+        <ul className="divide-y divide-rule-soft overflow-hidden rounded border border-rule bg-surface ">
           {scans.map((scan) => (
             <li key={scan.scanId}>
               <Link
                 href={`/scanner/history/${scan.scanId}`}
-                className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-ink-800 sm:flex-row sm:items-center"
+                className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-surface-2 sm:flex-row sm:items-center"
               >
-                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-ink-800">
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-surface-2">
                   {scan.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={scan.imageUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-ash-500">No image</div>
+                    <div className="flex h-full items-center justify-center text-xs text-ink-3">No image</div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-ash-500">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-3">
                     {formatScanDate(scan.createdAt)}
                     {scan.gradingCompany ? ` · ${scan.gradingCompany}` : ''}
                     {scan.savedToCollection ? ' · Saved' : ''}
                   </p>
-                  <p className="truncate font-medium text-ash-50">
+                  <p className="truncate font-medium text-ink">
                     {formatScanTitle(scan.player, scan.year, scan.setName)}
                   </p>
-                  <p className="text-sm text-ash-400">
+                  <p className="text-sm text-ink-2">
                     {scan.certNumber ? `Cert ${scan.certNumber}` : 'Cert pending'}
                     {scan.officialGrade !== null ? ` · Grade ${formatGradeValue(scan.officialGrade)}` : ''}
                   </p>

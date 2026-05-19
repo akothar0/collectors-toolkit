@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Collectors Toolkit · Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --surface: #ffffff;
+      --surface-2: #fbfaf6;
+      --ink: #14110d;
+      --ink-2: #5c594f;
+      --ink-3: #8a867b;
+      --ink-4: #b5b1a6;
+      --rule: #e4e0d5;
+      --rule-soft: #efeae0;
+      --accent: #b8531a;
+      --gold: #c89a3b;
+      --pos: #2f6f4a;
+      --neg: #b23a2e;
+      --warn: #a37a14;
+
+      --serif: 'Instrument Serif', 'Times New Roman', serif;
+      --sans: 'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --mono: 'Geist Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--ink); font-family: var(--sans);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    /* ── Page chrome ──────────────────────────────────────── */
+    .ds-shell {
+      max-width: 1240px; margin: 0 auto; padding: 0 48px;
+    }
+    .ds-nav {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(246,244,239,0.96); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--rule);
+      padding: 14px 48px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .ds-nav-left { display: flex; align-items: center; gap: 12px; }
+    .ds-mark {
+      width: 26px; height: 26px; border-radius: 4px; background: var(--ink); color: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--serif); font-style: italic; font-size: 16px;
+    }
+    .ds-nav-right { display: flex; gap: 18px; }
+    .ds-nav-right a { color: var(--ink-2); text-decoration: none; font-size: 13px; }
+    .ds-nav-right a:hover { color: var(--ink); }
+
+    /* ── Section frames ──────────────────────────────────── */
+    .ds-section { padding: 72px 0 24px; border-bottom: 1px solid var(--rule); }
+    .ds-section:last-child { border-bottom: none; }
+    .ds-section h2 {
+      font-family: var(--serif); font-size: 56px; line-height: 1; letter-spacing: -1.2px;
+      margin: 0 0 8px; font-weight: 400;
+    }
+    .ds-section h2 em { color: var(--accent); font-style: italic; }
+    .ds-section .ds-subtitle { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 22px; margin-bottom: 36px; }
+    .eyebrow {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--ink-3);
+    }
+    .rule { height: 1px; background: var(--rule); }
+    .rule-soft { height: 1px; background: var(--rule-soft); }
+    .ds-h3 { font-family: var(--serif); font-style: italic; font-size: 30px; margin: 36px 0 18px; font-weight: 400; }
+    .ds-note { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: 0.4px; line-height: 1.5; }
+
+    /* ── Cover ───────────────────────────────────────────── */
+    .cover {
+      padding: 88px 0 64px;
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 60px; align-items: flex-end;
+    }
+    .cover h1 {
+      font-family: var(--serif); font-size: 112px; line-height: 0.95; letter-spacing: -3px;
+      margin: 12px 0 0; font-weight: 400;
+    }
+    .cover h1 em { font-style: italic; color: var(--accent); }
+    .cover p { font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--ink-2); max-width: 480px; }
+
+    /* ── Color tokens ────────────────────────────────────── */
+    .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .sw {
+      border: 1px solid var(--rule); border-radius: 4px; padding: 18px; background: var(--surface);
+    }
+    .sw .chip { height: 72px; border-radius: 3px; border: 1px solid rgba(20,17,13,0.06); margin-bottom: 14px; }
+    .sw .name { font-size: 13px; font-weight: 500; }
+    .sw .hex { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 2px; letter-spacing: 0.4px; }
+    .sw .use { font-size: 11px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
+
+    /* ── Type ────────────────────────────────────────────── */
+    .type-row {
+      display: grid; grid-template-columns: 220px 1fr 160px; gap: 24px; padding: 18px 0;
+      border-bottom: 1px solid var(--rule-soft); align-items: baseline;
+    }
+    .type-name { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: 1px; text-transform: uppercase; }
+    .type-spec { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: right; letter-spacing: 0.4px; }
+
+    /* ── Atoms ───────────────────────────────────────────── */
+    .atoms { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    .atom {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+      padding: 28px; display: flex; flex-direction: column; gap: 18px;
+    }
+    .atom-title { display: flex; justify-content: space-between; align-items: baseline; }
+    .atom-title h4 { font-family: var(--serif); font-style: italic; font-size: 22px; margin: 0; font-weight: 400; }
+    .atom pre {
+      background: var(--surface-2); border: 1px dashed var(--rule); border-radius: 3px;
+      padding: 12px 14px; margin: 0; font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+      overflow-x: auto; line-height: 1.55;
+    }
+
+    /* ── Stat cell ───────────────────────────────────────── */
+    .stat-strip { display: flex; background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+    .stat-cell { flex: 1; padding: 20px 24px; border-right: 1px solid var(--rule); }
+    .stat-cell:last-child { border-right: none; }
+    .stat-cell .v { font-family: var(--serif); font-size: 44px; line-height: 1; letter-spacing: -0.5px; margin-top: 12px; font-weight: 400; }
+    .stat-cell .v em { font-style: italic; }
+    .stat-cell .delta { font-family: var(--mono); font-size: 11px; margin-top: 10px; color: var(--pos); display: flex; align-items: center; gap: 4px; }
+    .stat-cell .sub { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 18px; border-radius: 4px; font-family: var(--sans); font-size: 13px; font-weight: 500;
+      border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary { background: var(--ink); color: var(--bg); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+    .btn-mini { padding: 6px 10px; font-size: 12px; }
+
+    /* ── Slab anatomy ────────────────────────────────────── */
+    .slab-anatomy { display: grid; grid-template-columns: 280px 1fr; gap: 48px; }
+    .anatomy-callouts { font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+    .anatomy-callouts dt { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1.4px; text-transform: uppercase; margin-top: 14px; }
+    .anatomy-callouts dt:first-child { margin-top: 0; }
+    .anatomy-callouts dd { margin: 4px 0 0; padding: 0; }
+    .anatomy-line {
+      position: absolute; background: var(--accent); opacity: 0.5;
+    }
+
+    /* Slab grid showcase */
+    .slab-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 22px;
+      padding: 24px 0;
+    }
+    .slab-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .slab-tile .label { font-family: var(--mono); font-size: 10px; letter-spacing: 1.2px; color: var(--ink-3); }
+
+    /* ── Nav comparison ──────────────────────────────────── */
+    .navshow {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+      overflow: hidden;
+    }
+    .navshow .nav-bar {
+      height: 60px; padding: 0 28px; display: flex; align-items: center; gap: 4px;
+      border-bottom: 1px solid var(--rule); background: var(--bg);
+    }
+    .navshow .nb-mark { width: 22px; height: 22px; border-radius: 4px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-style: italic; font-size: 14px; margin-right: 10px; }
+    .navshow .nb-name { font-size: 13px; font-weight: 500; margin-right: 28px; }
+    .navshow .nb-item { padding: 6px 10px; font-size: 12px; color: var(--ink-2); position: relative; }
+    .navshow .nb-item.active { color: var(--ink); }
+    .navshow .nb-item.active::after {
+      content: ''; position: absolute; bottom: -19px; left: 10px; right: 10px; height: 1px; background: var(--ink);
+    }
+    .navshow .nb-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .navshow .nb-capture {
+      background: var(--ink); color: var(--bg); padding: 7px 13px; border-radius: 6px; font-size: 12px; font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .navshow .nb-capture .chev { font-size: 9px; opacity: 0.7; }
+    .navshow-meta { padding: 18px 28px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); line-height: 1.6; border-top: 1px dashed var(--rule); }
+    .navshow-meta strong { color: var(--ink); }
+
+    .capture-menu {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+      padding: 6px; width: 280px;
+      box-shadow: 0 12px 32px rgba(20,17,13,0.12);
+    }
+    .capture-menu .row { padding: 10px 12px; display: flex; align-items: center; gap: 12px; border-radius: 4px; cursor: pointer; }
+    .capture-menu .row:hover { background: var(--surface-2); }
+    .capture-menu .row .ico { width: 28px; height: 28px; border-radius: 4px; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--ink); flex-shrink: 0; }
+    .capture-menu .row .text { flex: 1; }
+    .capture-menu .row .label { font-size: 13px; font-weight: 500; }
+    .capture-menu .row .sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.6px; margin-top: 1px; }
+    .capture-menu .row .sk { font-family: var(--mono); font-size: 10px; color: var(--ink-3); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; }
+    .capture-menu .divider { height: 1px; background: var(--rule-soft); margin: 6px 0; }
+
+    /* Mobile nav comparison */
+    .mob-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: flex-start; }
+    .mob-frame {
+      background: var(--surface); border: 1px solid var(--rule); border-radius: 28px;
+      overflow: hidden; padding: 14px;
+      box-shadow: 0 12px 30px rgba(20,17,13,0.06);
+    }
+    .mob-tabbar { display: flex; align-items: center; gap: 6px; padding: 8px 8px 16px; }
+    .mob-tab {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: var(--ink-3); font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 6px 0;
+    }
+    .mob-tab.active { color: var(--ink); }
+    .mob-tab svg { stroke: currentColor; }
+    .mob-fab {
+      width: 46px; height: 46px; border-radius: 50%; background: var(--ink); color: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mob-frame .meta { padding: 12px 14px 0; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 1.2px; text-transform: uppercase; }
+
+    /* Code utility */
+    code.inline { background: var(--surface-2); border: 1px solid var(--rule); padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <nav class="ds-nav">
+    <div class="ds-nav-left">
+      <div class="ds-mark">c</div>
+      <strong>Collectors Toolkit</strong>
+      <span class="eyebrow" style="margin-left:10px;">Design System · v1</span>
+    </div>
+    <div class="ds-nav-right">
+      <a href="#tokens">Tokens</a>
+      <a href="#type">Type</a>
+      <a href="#atoms">Atoms</a>
+      <a href="#slab">Slab</a>
+      <a href="#nav">Navigation</a>
+      <a href="#patterns">Patterns</a>
+      <a href="Home redesign.html">→ Home</a>
+      <a href="Scanner.html">→ Scanner</a>
+    </div>
+  </nav>
+
+  <div class="ds-shell">
+    <!-- Cover -->
+    <header class="cover">
+      <div>
+        <div class="eyebrow">Volume 1 · Tokens, atoms, patterns</div>
+        <h1>The <em>look</em> &amp; feel.</h1>
+      </div>
+      <p>Premium editorial, restrained. Paper-feel canvas, ink protagonist, single warm
+      cinnabar accent. Numbers and slabs do the talking. This page is what Claude Code
+      should reference while building.</p>
+    </header>
+
+    <!-- Tokens -->
+    <section class="ds-section" id="tokens">
+      <div class="eyebrow">Tokens</div>
+      <h2>Color</h2>
+      <div class="ds-subtitle">Warm paper. Ink. One accent. Status earns its color.</div>
+
+      <h3 class="ds-h3">Surfaces &amp; ink</h3>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#f6f4ef;"></div><div class="name">paper</div><div class="hex">#F6F4EF</div><div class="use">Canvas. The page itself.</div></div>
+        <div class="sw"><div class="chip" style="background:#ffffff;"></div><div class="name">surface</div><div class="hex">#FFFFFF</div><div class="use">Cards, panels, input fields.</div></div>
+        <div class="sw"><div class="chip" style="background:#fbfaf6;"></div><div class="name">surface-2</div><div class="hex">#FBFAF6</div><div class="use">Recessed / dashed-border zones.</div></div>
+        <div class="sw"><div class="chip" style="background:#14110d;"></div><div class="name">ink</div><div class="hex">#14110D</div><div class="use">Primary text. Primary button.</div></div>
+        <div class="sw"><div class="chip" style="background:#5c594f;"></div><div class="name">ink-2</div><div class="hex">#5C594F</div><div class="use">Secondary text.</div></div>
+        <div class="sw"><div class="chip" style="background:#8a867b;"></div><div class="name">ink-3</div><div class="hex">#8A867B</div><div class="use">Tertiary / metadata / mono.</div></div>
+        <div class="sw"><div class="chip" style="background:#e4e0d5;"></div><div class="name">rule</div><div class="hex">#E4E0D5</div><div class="use">Primary divider.</div></div>
+        <div class="sw"><div class="chip" style="background:#efeae0;"></div><div class="name">rule-soft</div><div class="hex">#EFEAE0</div><div class="use">Row-level divider.</div></div>
+      </div>
+
+      <h3 class="ds-h3">Accent &amp; status</h3>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#b8531a;"></div><div class="name">accent · cinnabar</div><div class="hex">#B8531A</div><div class="use">Brand accent. Use sparingly — italic emphasis, hot CTAs, eyebrow highlights.</div></div>
+        <div class="sw"><div class="chip" style="background:#c89a3b;"></div><div class="name">gold</div><div class="hex">#C89A3B</div><div class="use">Want-list match, premium pulls. Borrowed from the slab world.</div></div>
+        <div class="sw"><div class="chip" style="background:#2f6f4a;"></div><div class="name">positive</div><div class="hex">#2F6F4A</div><div class="use">Gains, ✓ read, under target.</div></div>
+        <div class="sw"><div class="chip" style="background:#b23a2e;"></div><div class="name">negative</div><div class="hex">#B23A2E</div><div class="use">Losses, over target.</div></div>
+        <div class="sw"><div class="chip" style="background:#a37a14;"></div><div class="name">warn</div><div class="hex">#A37A14</div><div class="use">Manual entry, low-confidence states.</div></div>
+        <div class="sw"><div class="chip" style="background:#c41e3a;"></div><div class="name">grade · PSA</div><div class="hex">#C41E3A</div><div class="use">PSA label band only.</div></div>
+        <div class="sw"><div class="chip" style="background:#101935;"></div><div class="name">grade · BGS</div><div class="hex">#101935</div><div class="use">BGS label band only.</div></div>
+        <div class="sw"><div class="chip" style="background:#1d3e8b;"></div><div class="name">grade · SGC</div><div class="hex">#1D3E8B</div><div class="use">SGC label band only.</div></div>
+      </div>
+    </section>
+
+    <!-- Type -->
+    <section class="ds-section" id="type">
+      <div class="eyebrow">Type</div>
+      <h2>Three faces. <em>One voice.</em></h2>
+      <div class="ds-subtitle">Instrument Serif for display + flourish. Geist for UI. Geist Mono for numerals and codes.</div>
+
+      <h3 class="ds-h3">Instrument Serif · display + italic emphasis</h3>
+      <div class="type-row">
+        <div class="type-name">Display · 72</div>
+        <div style="font-family: var(--serif); font-size: 72px; line-height: 1; letter-spacing: -1.5px;">Scan. Grade. <em style="color:var(--accent);">Track.</em></div>
+        <div class="type-spec">Roman · 72 / 72 · -1.5</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Headline · 44</div>
+        <div style="font-family: var(--serif); font-size: 44px; line-height: 1.05; letter-spacing: -1px;">Your collection is <em style="color:var(--accent);">up $312</em> this week.</div>
+        <div class="type-spec">Mixed · 44 / 46 · -1</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Section · 28 italic</div>
+        <div style="font-family: var(--serif); font-style: italic; font-size: 28px;">Top holdings</div>
+        <div class="type-spec">Italic · 28 / 32 · -0.2</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Body lede · 22 italic</div>
+        <div style="font-family: var(--serif); font-style: italic; font-size: 22px; color: var(--ink-2);">Mostly the rookie — Wembanyama added ninety dollars on a single sale.</div>
+        <div class="type-spec">Italic · 22 / 30</div>
+      </div>
+
+      <h3 class="ds-h3">Geist · UI</h3>
+      <div class="type-row">
+        <div class="type-name">Body · 14</div>
+        <div style="font-family: var(--sans); font-size: 14px;">2023 Topps Chrome Wembanyama RC · #180 · PSA 10. Population 612 with zero higher.</div>
+        <div class="type-spec">Regular · 14 / 21</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Body 2 · 13</div>
+        <div style="font-family: var(--sans); font-size: 13px; color: var(--ink-2);">GPT parsed the Fanatics PDF; two rows came back at medium confidence.</div>
+        <div class="type-spec">Regular · 13 / 20</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">UI label · 12 / 500</div>
+        <div style="font-family: var(--sans); font-size: 12px; font-weight: 500;">Save to collection</div>
+        <div class="type-spec">Medium · 12 / 16</div>
+      </div>
+
+      <h3 class="ds-h3">Geist Mono · numerals + codes</h3>
+      <div class="type-row">
+        <div class="type-name">Eyebrow · 10 / 2px</div>
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3);">TODAY · 19 MAY 2026</div>
+        <div class="type-spec">Regular · 10 / 14 · +2</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Datum · 12</div>
+        <div style="font-family: var(--mono); font-size: 12px; color: var(--ink-2);">CERT 48029174 · PSA · GEM MT</div>
+        <div class="type-spec">Regular · 12 / 18</div>
+      </div>
+      <div class="type-row">
+        <div class="type-name">Tabular numeral · 18</div>
+        <div style="font-family: var(--mono); font-size: 18px; font-feature-settings: 'tnum';">$18,420.00 &nbsp; +$312 &nbsp; +1.72%</div>
+        <div class="type-spec">tnum · 18 / 24</div>
+      </div>
+
+      <div class="ds-note" style="margin-top: 30px;">
+        ── PRINCIPLES ──<br>
+        · Reach for serif italic to add personality to the editorial moments — greetings, section heads, hero numbers.<br>
+        · Geist Mono for anything where digits and identifiers earn their tabular character — money, percentages, cert numbers, timestamps, eyebrows.<br>
+        · Geist sans is the workhorse for everything else.<br>
+        · Never put serif italic in form fields, table headers, or eyebrows — it loses the contrast that makes it special.
+      </div>
+    </section>
+
+    <!-- Atoms -->
+    <section class="ds-section" id="atoms">
+      <div class="eyebrow">Atoms</div>
+      <h2>Small parts. <em>Composable.</em></h2>
+      <div class="ds-subtitle">These six atoms compose every screen in the system.</div>
+
+      <div class="atoms">
+
+        <!-- Eyebrow -->
+        <div class="atom">
+          <div class="atom-title">
+            <h4>Eyebrow</h4>
+            <span class="eyebrow">&lt;Eyebrow&gt;</span>
+          </div>
+          <div class="eyebrow">VOLUME IX · MONDAY 19 MAY 2026</div>
+          <div class="eyebrow" style="color: var(--accent);">● 2 NUDGES TODAY</div>
+          <div class="eyebrow" style="color: var(--pos);">✓ MATCHED · CERT 48029174</div>
+          <pre>&lt;Eyebrow&gt;Volume IX · Monday 19 May 2026&lt;/Eyebrow&gt;
+&lt;Eyebrow tone="accent"&gt;● 2 nudges today&lt;/Eyebrow&gt;</pre>
+        </div>
+
+        <!-- Rule -->
+        <div class="atom">
+          <div class="atom-title">
+            <h4>Rule</h4>
+            <span class="eyebrow">&lt;Rule&gt;</span>
+          </div>
+          <div>
+            <div class="rule"></div>
+            <div style="height: 16px;"></div>
+            <div class="rule-soft"></div>
+          </div>
+          <pre>&lt;Rule /&gt;            // section divider
+&lt;Rule soft /&gt;        // row-level divider</pre>
+        </div>
+
+        <!-- StatCell -->
+        <div class="atom" style="grid-column: 1 / -1;">
+          <div class="atom-title">
+            <h4>StatCell strip</h4>
+            <span class="eyebrow">&lt;StatStrip&gt; &lt;StatCell&gt;</span>
+          </div>
+          <div class="stat-strip">
+            <div class="stat-cell">
+              <div class="eyebrow">Total value</div>
+              <div class="v">$18,420</div>
+              <div class="delta">↗ $312 · +1.72%</div>
+            </div>
+            <div class="stat-cell">
+              <div class="eyebrow">Unrealized P/L</div>
+              <div class="v"><em>$4,220</em></div>
+              <div class="delta">+29.7% vs cost</div>
+            </div>
+            <div class="stat-cell">
+              <div class="eyebrow">Cards</div>
+              <div class="v">247</div>
+              <div class="sub">84 GRADED · 163 RAW</div>
+            </div>
+            <div class="stat-cell">
+              <div class="eyebrow">Cost basis</div>
+              <div class="v">$14,200</div>
+              <div class="sub">AVG $57.49</div>
+            </div>
+          </div>
+          <pre>&lt;StatStrip&gt;
+  &lt;StatCell label="Total value" value="$18,420" delta="+$312" deltaPct="+1.72%" /&gt;
+  &lt;StatCell label="Unrealized" value="$4,220" italic sub="+29.7% vs cost" /&gt;
+  ...
+&lt;/StatStrip&gt;</pre>
+        </div>
+
+        <!-- Buttons -->
+        <div class="atom">
+          <div class="atom-title">
+            <h4>Buttons</h4>
+            <span class="eyebrow">&lt;Button&gt;</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary">Save to collection</button>
+            <button class="btn btn-ghost">Edit details</button>
+            <button class="btn btn-accent">Capture</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-mini">Review now →</button>
+            <button class="btn btn-ghost btn-mini">Snooze</button>
+          </div>
+          <pre>&lt;Button intent="primary"&gt;Save to collection&lt;/Button&gt;
+&lt;Button intent="ghost" size="sm"&gt;Snooze&lt;/Button&gt;
+&lt;Button intent="accent"&gt;Capture&lt;/Button&gt;</pre>
+        </div>
+
+        <!-- Masthead -->
+        <div class="atom">
+          <div class="atom-title">
+            <h4>Editorial masthead</h4>
+            <span class="eyebrow">&lt;Masthead&gt;</span>
+          </div>
+          <div>
+            <div class="eyebrow">VOLUME IX · MONDAY 19 MAY 2026</div>
+            <div style="font-family: var(--serif); font-size: 48px; line-height: 1; letter-spacing: -1.2px; margin-top: 6px;">Good morning, <em style="color: var(--accent); font-style: italic;">Marcus.</em></div>
+          </div>
+          <pre>&lt;Masthead
+  eyebrow="Volume IX · Monday 19 May 2026"
+  greeting="Good morning,"
+  name="Marcus"
+/&gt;</pre>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Slab -->
+    <section class="ds-section" id="slab">
+      <div class="eyebrow">Component</div>
+      <h2>The <em>slab.</em></h2>
+      <div class="ds-subtitle">CSS-only graded-slab placeholder. Renders as PSA / BGS / SGC / Raw at any size with one component.</div>
+
+      <h3 class="ds-h3">Anatomy</h3>
+      <div class="slab-anatomy">
+        <div id="slab-mount" style="display:flex; justify-content:center;"></div>
+        <dl class="anatomy-callouts">
+          <dt>1 · Plastic case</dt>
+          <dd>Linear gradient + inset highlight + soft shadow. Light flavor (paper) or dark flavor (graphite).</dd>
+
+          <dt>2 · Label band</dt>
+          <dd>Top 11% of slab. Grading-company red / navy / royal. Format: <code class="inline">PSA 10 · GEM MT</code>. Raw cards swap this for a mono "RAW · UNGRADED" line.</dd>
+
+          <dt>3 · Card window</dt>
+          <dd>Tinted gradient (team / parallel color) with refractor sheen, radial spotlight, and a stacked-ellipse silhouette to imply a player. Surname renders as serif italic in the accent color.</dd>
+
+          <dt>4 · Sport tag</dt>
+          <dd>Top-left, mono micro-text. NBA / NFL / MLB / WNBA.</dd>
+
+          <dt>5 · Card number watermark</dt>
+          <dd>Top-right, mono. <code class="inline">#180</code>.</dd>
+
+          <dt>6 · Bottom band</dt>
+          <dd>Set + year, mono, uppercase. Truncates with ellipsis when narrow.</dd>
+        </dl>
+      </div>
+
+      <h3 class="ds-h3">Size matrix</h3>
+      <div class="ds-note" style="margin-bottom: 16px;">
+        The component is scale-invariant — every internal element is sized as a % of the slab width.
+        Recommended sizes: <strong style="color: var(--ink);">36 / 44 / 64 / 120 / 168 / 220</strong>.
+      </div>
+      <div class="slab-grid" id="slab-grid"></div>
+
+      <h3 class="ds-h3">Grading-company variants</h3>
+      <div class="slab-grid" id="slab-graders"></div>
+      <div class="ds-note">
+        Use the holding's <code class="inline">grade</code> string to select the label color.
+        Pattern match: <code class="inline">startsWith('PSA')</code>, <code class="inline">'BGS'</code>, <code class="inline">'SGC'</code>, <code class="inline">=== 'Raw'</code>.
+      </div>
+    </section>
+
+    <!-- Nav -->
+    <section class="ds-section" id="nav">
+      <div class="eyebrow">Navigation</div>
+      <h2>Places vs. <em>tasks.</em></h2>
+      <div class="ds-subtitle">The current bar mixes the two. The new bar separates them — and earns its breathing room.</div>
+
+      <h3 class="ds-h3" style="margin-top: 24px;">Before</h3>
+      <div class="navshow">
+        <div class="nav-bar">
+          <div class="nb-mark">c</div>
+          <div class="nb-name">Collectors Toolkit</div>
+          <div class="nb-item active">Home</div>
+          <div class="nb-item">Scanner</div>
+          <div class="nb-item">Grader</div>
+          <div class="nb-item">Collection</div>
+          <div class="nb-item">Portfolio</div>
+          <div class="nb-item">Want list</div>
+          <div class="nb-item">Sets</div>
+          <div class="nb-item">Import</div>
+          <div class="nb-right">
+            <div style="width:28px; height:28px; border-radius:50%; background: var(--accent);"></div>
+          </div>
+        </div>
+        <div class="navshow-meta">
+          8 ITEMS · NOUNS (COLLECTION, PORTFOLIO, SETS) MIXED WITH VERBS (SCANNER, GRADER, IMPORT) ·
+          THE PRIMARY CAPTURE ACTION (SCAN) IS BURIED ALONGSIDE 7 SIBLINGS WITH NO HIERARCHY.
+        </div>
+      </div>
+
+      <h3 class="ds-h3">After</h3>
+      <div class="navshow">
+        <div class="nav-bar">
+          <div class="nb-mark">c</div>
+          <div class="nb-name">Collectors Toolkit</div>
+          <div class="nb-item active">Home</div>
+          <div class="nb-item">Collection</div>
+          <div class="nb-item">Portfolio</div>
+          <div class="nb-item">Sets</div>
+          <div class="nb-item">Want list</div>
+          <div class="nb-right">
+            <div style="display:flex; align-items:center; gap:8px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--ink-3);">
+              <span>⌕ Search</span><span style="margin-left:24px;">⌘K</span>
+            </div>
+            <div class="nb-capture">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 4h-5l-2 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5l-2-2Z"/><circle cx="12" cy="13" r="4"/></svg>
+              Capture <span class="chev">▾</span>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background: var(--accent);"></div>
+          </div>
+        </div>
+        <div class="navshow-meta">
+          5 ITEMS · ALL NOUNS · PRIMARY ACTION ELEVATED ·
+          <strong>HOME · COLLECTION · PORTFOLIO · SETS · WANT LIST</strong> ·
+          IMPORT MOVED INTO THE CAPTURE MENU (USED ~5×/MONTH, NOT TOP-LEVEL).
+        </div>
+      </div>
+
+      <h3 class="ds-h3">The Capture menu</h3>
+      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 36px; align-items: flex-start;">
+        <div class="capture-menu">
+          <div class="row">
+            <div class="ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+            </div>
+            <div class="text">
+              <div class="label">Scan slab</div>
+              <div class="sub">PSA · BGS · SGC · CERT LOOKUP</div>
+            </div>
+            <div class="sk">S</div>
+          </div>
+          <div class="row">
+            <div class="ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <div class="text">
+              <div class="label">Grade raw</div>
+              <div class="sub">GPT-4O VISION · SUB-GRADES</div>
+            </div>
+            <div class="sk">G</div>
+          </div>
+          <div class="row">
+            <div class="ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </div>
+            <div class="text">
+              <div class="label">Add manually</div>
+              <div class="sub">PLAYER + GRADE · ~30S</div>
+            </div>
+            <div class="sk">A</div>
+          </div>
+          <div class="divider"></div>
+          <div class="row">
+            <div class="ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            </div>
+            <div class="text">
+              <div class="label">Import a batch</div>
+              <div class="sub">EBAY · FANATICS · CSV · PASTE</div>
+            </div>
+            <div class="sk">I</div>
+          </div>
+        </div>
+        <div>
+          <p style="font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--ink-2); margin: 0;">
+            Click <strong style="color: var(--ink); font-style: normal; font-family: var(--sans); font-size: 14px; padding: 3px 8px; background: var(--ink); color: var(--bg); border-radius: 4px;">Capture ▾</strong> and a popover lists every way you can put a card into your collection. The four actions are ordered by frequency: scan (daily), grade (weekly), add (occasional), import (rare).
+          </p>
+          <div class="ds-note" style="margin-top: 18px;">
+            ── KEYBOARD ──<br>
+            · <strong style="color: var(--ink);">S</strong> opens Scan from anywhere<br>
+            · <strong style="color: var(--ink);">G</strong> opens Grade<br>
+            · <strong style="color: var(--ink);">A</strong> opens Add Manually<br>
+            · <strong style="color: var(--ink);">I</strong> opens Import
+          </div>
+        </div>
+      </div>
+
+      <h3 class="ds-h3">Mobile bottom bar</h3>
+      <div class="mob-row">
+        <div>
+          <div class="eyebrow" style="margin-bottom: 10px;">Before · 6-up grid</div>
+          <div class="mob-frame">
+            <div class="meta">CRAMPED · CAPTURE COMPETES FOR ATTENTION</div>
+            <div class="mob-tabbar">
+              <div class="mob-tab active">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="6" height="16" rx="1"/><rect x="11" y="4" width="6" height="16" rx="1"/></svg>
+                <span>SCAN</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
+                <span>GRADE</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="6" height="16"/><rect x="11" y="4" width="6" height="16"/></svg>
+                <span>COLL</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M19 14c3-3 3-6 0-8s-7-1-7 3"/></svg>
+                <span>WANT</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 19h18M5 16V9M10 16V5"/></svg>
+                <span>PORT</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/></svg>
+                <span>SETS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom: 10px;">After · 4 nouns + center FAB</div>
+          <div class="mob-frame">
+            <div class="meta">CAPTURE BUTTON OWNS THE CENTER · ALWAYS ONE TAP</div>
+            <div class="mob-tabbar">
+              <div class="mob-tab active">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M5 10v10h14V10"/></svg>
+                <span>HOME</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="3" y="4" width="6" height="16" rx="1"/><rect x="11" y="4" width="6" height="16" rx="1"/></svg>
+                <span>COLLECTION</span>
+              </div>
+              <div class="mob-fab">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14.5 4h-5l-2 2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5l-2-2Z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <div class="mob-tab">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M19 14c1.5-1.5 3-3.5 3-5.5A4.5 4.5 0 0 0 17.5 4 4.5 4.5 0 0 0 12 7a4.5 4.5 0 0 0-5.5-3A4.5 4.5 0 0 0 2 8.5c0 2 1.5 4 3 5.5L12 21l7-7Z"/></svg>
+                <span>WANTS</span>
+              </div>
+              <div class="mob-tab">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <span>SETS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ds-note" style="margin-top: 18px;">
+        Portfolio + Import live behind a profile sheet or in Home's quick-tools rail.
+        Capture FAB tap → opens the same 4-action popover from desktop (scan / grade / add / import).
+      </div>
+    </section>
+
+    <!-- Patterns -->
+    <section class="ds-section" id="patterns">
+      <div class="eyebrow">Patterns</div>
+      <h2>Layouts that <em>repeat.</em></h2>
+      <div class="ds-subtitle">Compositions that appear across surfaces. Reuse — don't reinvent.</div>
+
+      <h3 class="ds-h3">Holdings row</h3>
+      <div style="background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 22px 24px;">
+        <div style="display: grid; grid-template-columns: 32px 1fr 120px 140px 90px; gap: 16px; padding: 6px 0; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 1.4px;">
+          <div>#</div><div>CARD</div><div>GRADE</div><div>VALUE</div><div style="text-align: right;">1W Δ</div>
+        </div>
+        <div class="rule-soft"></div>
+        <div style="display: grid; grid-template-columns: 32px 1fr 120px 140px 90px; gap: 16px; padding: 16px 0; align-items: center; border-bottom: 1px solid var(--rule-soft);">
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--ink-3);">01</div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div id="row-slab-1" style="flex-shrink: 0;"></div>
+            <div>
+              <div style="font-family: var(--serif); font-size: 18px; line-height: 1.1;">Luka Dončić</div>
+              <div style="font-size: 12px; color: var(--ink-2); margin-top: 2px;">2018 Panini Prizm #280</div>
+            </div>
+          </div>
+          <div style="font-family: var(--mono); font-size: 12px;">PSA 10<div style="color: var(--ink-3); font-size: 10px; margin-top: 2px;">POP 1,842</div></div>
+          <div style="font-family: var(--serif); font-style: italic; font-size: 22px;">$1,850</div>
+          <div style="text-align: right; font-family: var(--mono); font-size: 12px; color: var(--pos);">+$130</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 32px 1fr 120px 140px 90px; gap: 16px; padding: 16px 0; align-items: center;">
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--ink-3);">02</div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div id="row-slab-2" style="flex-shrink: 0;"></div>
+            <div>
+              <div style="font-family: var(--serif); font-size: 18px; line-height: 1.1;">Victor Wembanyama</div>
+              <div style="font-size: 12px; color: var(--ink-2); margin-top: 2px;">2023 Topps Chrome RC #180</div>
+            </div>
+          </div>
+          <div style="font-family: var(--mono); font-size: 12px;">PSA 10<div style="color: var(--ink-3); font-size: 10px; margin-top: 2px;">POP 612</div></div>
+          <div style="font-family: var(--serif); font-style: italic; font-size: 22px;">$940</div>
+          <div style="text-align: right; font-family: var(--mono); font-size: 12px; color: var(--pos);">+$88</div>
+        </div>
+      </div>
+
+      <h3 class="ds-h3">Empty state · serif italic</h3>
+      <div style="background: var(--surface); border: 1px dashed var(--rule); border-radius: 4px; padding: 60px 24px; text-align: center;">
+        <div class="eyebrow" style="color: var(--accent);">NOTHING HERE YET</div>
+        <div style="font-family: var(--serif); font-style: italic; font-size: 32px; margin-top: 12px;">Your hunt list is empty.</div>
+        <p style="font-size: 13px; color: var(--ink-2); max-width: 360px; margin: 8px auto 18px;">Add cards you're looking for and we'll watch eBay comps for you.</p>
+        <button class="btn btn-primary btn-mini">Add the first one</button>
+      </div>
+
+      <h3 class="ds-h3">Footer · documentary</h3>
+      <div style="padding-top: 18px; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 1.4px;">
+        <span>COLLECTORS TOOLKIT · v1.0 · BUILT FOR THE HOBBY</span>
+        <span>SCANS 1/10 · GRADES 0/10 · IMPORTS 1/100</span>
+      </div>
+
+      <div class="ds-note" style="margin: 40px 0 60px;">
+        ── PRINCIPLES ──<br>
+        · Whitespace is part of the design. Default page padding is 36px desktop, 20px mobile.<br>
+        · A border-radius of 4px is the house standard. 6px for nav pills, 999px only for badges &amp; circular avatars.<br>
+        · Shadows are rare. The page reads from rules and whitespace, not floating cards.<br>
+        · Numbers always tabular (use Geist Mono with <code class="inline">font-feature-settings: 'tnum'</code> on Geist sans where mixed).
+      </div>
+    </section>
+  </div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" data-presets="react">
+    function mountSlab(id, holding, w, h, flavor = 'light', showLabel = true) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      ReactDOM.createRoot(el).render(
+        <Slab holding={holding} width={w} height={h} flavor={flavor} showLabel={showLabel}/>
+      );
+    }
+
+    function mountChildren(id, children) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      ReactDOM.createRoot(el).render(<>{children}</>);
+    }
+
+    // Anatomy hero slab
+    mountSlab('slab-mount', TOP_HOLDINGS[2], 240, 360);
+
+    // Size matrix
+    mountChildren('slab-grid', [36, 64, 120, 168, 220].map((w, i) => (
+      <div key={w} className="slab-tile">
+        <Slab holding={TOP_HOLDINGS[i % TOP_HOLDINGS.length]} width={w} height={Math.round(w * 1.5)} flavor="light" showLabel={w >= 64}/>
+        <div className="label">{w}px</div>
+      </div>
+    )));
+
+    // Grader variants
+    mountChildren('slab-graders', (
+      <>
+        <div className="slab-tile">
+          <Slab holding={TOP_HOLDINGS[2]} width={140} height={210} flavor="light"/>
+          <div className="label">PSA 10 · GEM MT</div>
+        </div>
+        <div className="slab-tile">
+          <Slab holding={TOP_HOLDINGS[3]} width={140} height={210} flavor="light"/>
+          <div className="label">PSA 9 · MINT</div>
+        </div>
+        <div className="slab-tile">
+          <Slab holding={TOP_HOLDINGS[1]} width={140} height={210} flavor="light"/>
+          <div className="label">BGS 9</div>
+        </div>
+        <div className="slab-tile">
+          <Slab holding={{ ...TOP_HOLDINGS[4], grade: 'SGC 10' }} width={140} height={210} flavor="light"/>
+          <div className="label">SGC 10</div>
+        </div>
+        <div className="slab-tile">
+          <Slab holding={TOP_HOLDINGS[5]} width={140} height={210} flavor="light"/>
+          <div className="label">RAW · UNGRADED</div>
+        </div>
+      </>
+    ));
+
+    // Holdings rows
+    mountSlab('row-slab-1', TOP_HOLDINGS[0], 36, 54, 'light', false);
+    mountSlab('row-slab-2', TOP_HOLDINGS[2], 36, 54, 'light', false);
+  </script>
+</body>
+</html>

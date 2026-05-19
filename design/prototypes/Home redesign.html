@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Collectors Toolkit · Home · Two directions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: #f0eee9;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    * { box-sizing: border-box; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" src="variation-a.jsx"></script>
+  <script type="text/babel" src="variation-b.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="intro"
+            title="Collectors Toolkit · Home / Dashboard"
+            subtitle="Two directions for the signed-in home — premium editorial. Desktop + mobile side by side. Click the gold/ink Capture button on any board to see the scan flow.">
+            <DCArtboard id="a-desktop" label="A · Editorial — Desktop" width={1320} height={1620}>
+              <VariationADesktop />
+            </DCArtboard>
+            <DCArtboard id="a-mobile" label="A · Editorial — Mobile" width={420} height={900}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
+                <VariationAMobile />
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="bold"
+            title="Variation B · Bold / Slab-as-hero"
+            subtitle="Graphite dark canvas, gold accent. Photo-led, asymmetric slab wall, live POP ticker, set-as-film-strip, quick-capture rail.">
+            <DCArtboard id="b-desktop" label="B · Bold — Desktop" width={1320} height={2900}>
+              <VariationBDesktop />
+            </DCArtboard>
+            <DCArtboard id="b-mobile" label="B · Bold — Mobile" width={420} height={900}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
+                <VariationBMobile />
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+
+        </DesignCanvas>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>

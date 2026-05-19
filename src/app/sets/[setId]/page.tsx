@@ -6,7 +6,7 @@ import { Share2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FetchErrorBanner } from '@/components/fetch-error-banner';
-import { ProgressBar } from '@/components/progress-bar';
+import { Eyebrow, Rule } from '@/components/editorial';
 import { readJsonResponse } from '@/lib/http-json';
 import { setPercent, type SetProgressDetail } from '@/lib/sets';
 
@@ -15,63 +15,54 @@ type FilterMode = 'all' | 'missing';
 export default function SetDetailPage() {
   const params = useParams<{ setId: string }>();
   const setId = params.setId;
-  const [data, setData] = useState<SetProgressDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<FilterMode>('all');
-  const [copied, setCopied] = useState(false);
+
+  const [data,     setData]     = useState<SetProgressDetail | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+  const [filter,   setFilter]   = useState<FilterMode>('all');
+  const [copied,   setCopied]   = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      const response = await fetch(`/api/sets/${setId}/progress`);
-      const payload = await readJsonResponse<SetProgressDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to load set.');
+      const res = await fetch(`/api/sets/${setId}/progress`);
+      const payload = await readJsonResponse<SetProgressDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(payload.error ?? 'Unable to load set.');
       setData(payload);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load set.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load set.');
+    } finally { setLoading(false); }
   }, [setId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const slots = useMemo(() => {
     if (!data) return [];
-    return Array.from({ length: data.set.totalCards }, (_, index) => {
-      const number = String(index + 1);
+    return Array.from({ length: data.set.totalCards }, (_, i) => {
+      const number = String(i + 1);
       return { number, owned: Boolean(data.cardChecklist[number]) };
     });
   }, [data]);
 
-  const visibleSlots = useMemo(() => {
-    if (filter === 'missing') {
-      return slots.filter((slot) => !slot.owned);
-    }
-    return slots;
-  }, [filter, slots]);
+  const visibleSlots = useMemo(() =>
+    filter === 'missing' ? slots.filter(s => !s.owned) : slots
+  , [filter, slots]);
 
   async function toggleCard(cardNumber: string, owned: boolean) {
     setToggling(cardNumber);
     try {
-      const response = await fetch(`/api/sets/${setId}/progress`, {
+      const res = await fetch(`/api/sets/${setId}/progress`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cardNumber, owned: !owned }),
       });
-      const payload = await readJsonResponse<SetProgressDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(payload.error ?? 'Unable to update card.');
+      const payload = await readJsonResponse<SetProgressDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(payload.error ?? 'Unable to update card.');
       setData(payload);
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : 'Unable to update card.');
-    } finally {
-      setToggling(null);
-    }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to update card.');
+    } finally { setToggling(null); }
   }
 
   async function shareProgress() {
@@ -81,20 +72,16 @@ export default function SetDetailPage() {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError('Unable to copy share text.');
-    }
+    } catch { setError('Unable to copy.'); }
   }
 
   if (loading) {
     return (
       <section className="space-y-6">
-        <div className="h-24 animate-pulse rounded bg-ink-800" />
-        <div className="h-4 animate-pulse rounded-full bg-ink-800" />
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
-          {Array.from({ length: 24 }).map((_, index) => (
-            <div key={index} className="aspect-square animate-pulse rounded-lg bg-ink-800" />
-          ))}
+        <div className="h-16 animate-pulse rounded border border-rule bg-surface" />
+        <div className="h-1 animate-pulse rounded bg-rule" />
+        <div className="grid grid-cols-[repeat(20,1fr)] gap-1">
+          {[...Array(40)].map((_, i) => <div key={i} className="aspect-square animate-pulse rounded bg-rule" />)}
         </div>
       </section>
     );
@@ -102,10 +89,8 @@ export default function SetDetailPage() {
 
   if (error && !data) {
     return (
-      <section className="space-y-6">
-        <Link href={'/sets' as Route} className="text-sm text-brand-500 hover:underline">
-          ← All sets
-        </Link>
+      <section className="space-y-4">
+        <Link href="/sets" className="font-mono text-[11px] text-ink-3 hover:text-ink">← All sets</Link>
         <FetchErrorBanner message={error} onRetry={() => void load()} />
       </section>
     );
@@ -114,80 +99,92 @@ export default function SetDetailPage() {
   if (!data) return null;
 
   const percent = setPercent(data.cardsOwned, data.set.totalCards);
+  const missingSlots = slots.filter(s => !s.owned);
 
   return (
     <section className="space-y-8">
-      <Link href={'/sets' as Route} className="text-sm text-brand-500 hover:underline">
-        ← All sets
-      </Link>
+      <Link href={'/sets' as Route} className="font-mono text-[11px] text-ink-3 hover:text-ink">← All sets</Link>
 
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* Masthead */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-ash-50">
-            {data.set.name}
-          </h1>
-          {data.set.year ? (
-            <p className="mt-1 text-lg text-ash-300">{data.set.year}</p>
-          ) : null}
+          <h1 className="font-serif italic text-[40px] leading-tight text-ink">{data.set.name}</h1>
+          <p className="font-mono text-[11px] text-ink-3">
+            {[data.set.year, data.set.sport].filter(Boolean).join(' · ')}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void shareProgress()}
-          className="inline-flex min-h-11 items-center gap-2 rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
-        >
-          <Share2 className="h-4 w-4" />
-          {copied ? 'Copied!' : 'Share Progress'}
+        <div className="text-right shrink-0">
+          <p className="font-serif italic text-[56px] leading-none text-ink">{percent}%</p>
+          <p className="font-mono text-[10px] text-ink-3">
+            {data.cardsOwned}/{data.set.totalCards} complete
+          </p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 overflow-hidden rounded-full bg-rule">
+        <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${percent}%` }} />
+      </div>
+
+      {error && <FetchErrorBanner message={error} onRetry={() => void load()} />}
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        {(['all', 'missing'] as const).map(f => (
+          <button key={f} type="button" onClick={() => setFilter(f)}
+            className={`rounded border px-3 py-1.5 font-mono text-[11px] transition-colors ${
+              filter === f ? 'border-ink bg-ink text-paper' : 'border-rule text-ink-3 hover:border-ink hover:text-ink'
+            }`}>
+            {f === 'all' ? 'All' : 'Missing only'}
+          </button>
+        ))}
+        <button type="button" onClick={() => void shareProgress()}
+          className="ml-auto inline-flex items-center gap-1.5 rounded border border-rule px-3 py-1.5 font-mono text-[11px] text-ink-3 hover:border-ink hover:text-ink">
+          <Share2 className="h-3 w-3" />
+          {copied ? 'Copied!' : 'Share'}
         </button>
       </div>
 
-      {error ? <FetchErrorBanner message={error} onRetry={() => void load()} /> : null}
-
-      <ProgressBar
-        value={data.cardsOwned}
-        max={data.set.totalCards}
-        label={`${data.cardsOwned}/${data.set.totalCards} cards (${percent}%)`}
-      />
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium ${
-            filter === 'all' ? 'bg-ink-900 text-white' : 'border border-ink-700 text-ash-200'
-          }`}
-        >
-          Show all
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('missing')}
-          className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium ${
-            filter === 'missing'
-              ? 'bg-ink-900 text-white'
-              : 'border border-ink-700 text-ash-200'
-          }`}
-        >
-          Show missing only
-        </button>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
-        {visibleSlots.map((slot) => (
-          <button
-            key={slot.number}
-            type="button"
-            disabled={toggling === slot.number}
+      {/* Bit-grid */}
+      <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(20, minmax(0, 1fr))' }}>
+        {visibleSlots.map(slot => (
+          <button key={slot.number} type="button" disabled={toggling === slot.number}
             onClick={() => void toggleCard(slot.number, slot.owned)}
-            className={`flex aspect-square items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${
+            title={`#${slot.number}`}
+            className={`flex aspect-square items-center justify-center rounded-[2px] font-mono text-[9px] transition-colors disabled:opacity-60 ${
               slot.owned
-                ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-ink-700 bg-ink-800 text-ash-400 hover:border-ink-600'
-            }`}
-          >
+                ? 'bg-ink text-paper'
+                : 'bg-rule text-ink-3 hover:bg-ink/20'
+            }`}>
             {slot.number}
           </button>
         ))}
       </div>
+
+      {/* Hunting list */}
+      {filter === 'all' && missingSlots.length > 0 && (
+        <div>
+          <Rule className="mb-5" />
+          <Eyebrow className="mb-3">Still hunting</Eyebrow>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {missingSlots.slice(0, 18).map(slot => {
+              const query = new URLSearchParams({ _nkw: `${data.set.name} #${slot.number}`, LH_Sold: '1', LH_Complete: '1' });
+              return (
+                <div key={slot.number} className="flex items-center justify-between gap-3 rounded border border-rule px-3 py-2">
+                  <span className="font-mono text-[11px] text-ink">#{slot.number}</span>
+                  <a href={`https://www.ebay.com/sch/i.html?${query}`} target="_blank" rel="noreferrer"
+                    className="font-mono text-[10px] text-accent hover:underline">
+                    eBay →
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+          {missingSlots.length > 18 && (
+            <p className="mt-3 font-mono text-[10px] text-ink-3">+{missingSlots.length - 18} more needed</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }

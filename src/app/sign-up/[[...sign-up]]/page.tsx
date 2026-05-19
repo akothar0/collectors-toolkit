@@ -1,20 +1,33 @@
 import { SignUp } from '@clerk/nextjs';
+import { Eyebrow } from '@/components/editorial';
 
 export default function SignUpPage() {
   return (
-    <section className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center py-10">
-      <div className="mb-8 space-y-3 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-500">Account</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-ash-50">
-          Create your account
+    <section className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center py-12">
+      <div className="mb-8 space-y-2 text-center">
+        <Eyebrow className="justify-center">Account</Eyebrow>
+        <h1 className="font-serif italic text-[36px] leading-tight text-ink">
+          Create your account.
         </h1>
-        <p className="text-sm leading-6 text-ash-300">Start scanning slabs and building your collection.</p>
+        <p className="text-[14px] text-ink-2">
+          Start scanning slabs and building your collection.
+        </p>
       </div>
       <SignUp
         appearance={{
+          variables: {
+            colorBackground:       '#ffffff',
+            colorText:             '#14110d',
+            colorTextSecondary:    '#5c594f',
+            colorPrimary:          '#b8531a',
+            colorInputBackground:  '#fbfaf6',
+            colorInputText:        '#14110d',
+            borderRadius:          '4px',
+            fontFamily:            'var(--font-geist), ui-sans-serif, system-ui',
+          },
           elements: {
             rootBox: 'w-full',
-            card: 'rounded border border-ink-700 bg-ink-900 ',
+            card: 'shadow-soft border border-rule',
           },
         }}
         routing="path"

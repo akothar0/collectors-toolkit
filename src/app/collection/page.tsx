@@ -2,408 +2,258 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { CreditCard, Grid3X3, List, Plus, Upload } from 'lucide-react';
+import { Grid3X3, List, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  GRADING_COMPANIES,
-  SPORTS,
-  buildCollectionQuery,
-  type CollectionCardItem,
-  type CollectionListFilters,
-  type CollectionSortBy,
-  type CollectionSortDir,
+  GRADING_COMPANIES, SPORTS, buildCollectionQuery,
+  type CollectionCardItem, type CollectionListFilters,
+  type CollectionSortBy, type CollectionSortDir,
 } from '@/lib/collection';
 import {
-  displayPlayer,
-  displaySetName,
-  formatGradeBadge,
-  formatPlayerYearLine,
-  formatPrice,
+  displayPlayer, displaySetName, formatGradeBadge, formatPrice,
 } from '@/lib/collection-presenter';
-import { CardImage } from '@/components/card-image';
 import { FetchErrorBanner } from '@/components/fetch-error-banner';
+import { Eyebrow, Rule } from '@/components/editorial';
+import { Slab, type SlabHolding } from '@/components/Slab';
 import { readJsonResponse } from '@/lib/http-json';
 
-type ViewMode = 'grid' | 'list';
+const SPORT_TINTS: Record<string, string> = {
+  NBA: '#0c2340', NFL: '#8b1a1a', MLB: '#1a3a1a', WNBA: '#b8860b',
+};
 
 const SORT_OPTIONS: { value: `${CollectionSortBy}:${CollectionSortDir}`; label: string }[] = [
   { value: 'created_at:desc', label: 'Newest' },
-  { value: 'created_at:asc', label: 'Oldest' },
-  { value: 'player:asc', label: 'Player A-Z' },
-  { value: 'grade:desc', label: 'Grade high to low' },
-  { value: 'grade:asc', label: 'Grade low to high' },
+  { value: 'created_at:asc',  label: 'Oldest' },
+  { value: 'player:asc',      label: 'Player A–Z' },
+  { value: 'grade:desc',      label: 'Grade ↓' },
+  { value: 'grade:asc',       label: 'Grade ↑' },
 ];
 
-function parseSortValue(value: string): Pick<CollectionListFilters, 'sortBy' | 'sortDir'> {
-  const [sortBy, sortDir] = value.split(':') as [CollectionSortBy, CollectionSortDir];
+function parseSortValue(v: string): Pick<CollectionListFilters, 'sortBy' | 'sortDir'> {
+  const [sortBy, sortDir] = v.split(':') as [CollectionSortBy, CollectionSortDir];
   return { sortBy, sortDir };
+}
+
+function itemToSlab(item: CollectionCardItem): SlabHolding {
+  return {
+    player: displayPlayer(item),
+    year: item.year ?? 2020,
+    set: displaySetName(item) ?? '',
+    grade: formatGradeBadge(item.conditionType, item.grade, item.gradingCompany),
+    sport: item.sport ?? null,
+    tint: SPORT_TINTS[item.sport ?? ''] ?? '#2d2e34',
+    imageUrl: item.frontImageUrl ?? null,
+  };
 }
 
 export default function CollectionPage() {
   const router = useRouter();
-  const [items, setItems] = useState<CollectionCardItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const [sportFilter, setSportFilter] = useState('All');
-  const [conditionFilter, setConditionFilter] = useState('All');
-  const [companyFilter, setCompanyFilter] = useState('All');
+  const [items, setItems]         = useState<CollectionCardItem[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [sport, setSport]         = useState('All');
+  const [condition, setCondition] = useState('All');
+  const [company, setCompany]     = useState('All');
   const [sortValue, setSortValue] = useState('created_at:desc');
-  const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [search, setSearch]       = useState('');
+  const [viewMode, setViewMode]   = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     const stored = window.localStorage.getItem('collection-view-mode');
-    if (stored === 'grid' || stored === 'list') {
-      setViewMode(stored);
-    }
+    if (stored === 'grid' || stored === 'list') setViewMode(stored);
   }, []);
-
   useEffect(() => {
     window.localStorage.setItem('collection-view-mode', viewMode);
   }, [viewMode]);
 
-  const filters = useMemo<CollectionListFilters>(() => {
-    const { sortBy, sortDir } = parseSortValue(sortValue);
-    return {
-      sport: sportFilter !== 'All' ? sportFilter : undefined,
-      conditionType:
-        conditionFilter === 'Graded' ? 'graded' : conditionFilter === 'Raw' ? 'raw' : undefined,
-      gradingCompany: companyFilter !== 'All' ? companyFilter : undefined,
-      search: search.trim() || undefined,
-      sortBy,
-      sortDir,
-    };
-  }, [sportFilter, conditionFilter, companyFilter, sortValue, search]);
+  const filters = useMemo<CollectionListFilters>(() => ({
+    ...parseSortValue(sortValue),
+    sport: sport !== 'All' ? sport : undefined,
+    conditionType: condition === 'Graded' ? 'graded' : condition === 'Raw' ? 'raw' : undefined,
+    gradingCompany: company !== 'All' ? company : undefined,
+    search: search.trim() || undefined,
+  }), [sport, condition, company, sortValue, search]);
 
   useEffect(() => {
     let cancelled = false;
-
-    async function loadCollection() {
-      setLoading(true);
-      setError('');
-
+    async function load() {
+      setLoading(true); setError('');
       try {
         const query = buildCollectionQuery(filters);
-        const response = await fetch(`/api/collection${query ? `?${query}` : ''}`);
-        const data = await readJsonResponse<{ items?: CollectionCardItem[]; error?: string }>(response);
-
-        if (!response.ok) {
-          throw new Error(data.error ?? 'Unable to load collection.');
-        }
-
-        if (!cancelled) {
-          setItems(data.items ?? []);
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Unable to load collection.');
-        }
+        const res = await fetch(`/api/collection${query ? `?${query}` : ''}`);
+        const data = await readJsonResponse<{ items?: CollectionCardItem[]; error?: string }>(res);
+        if (!res.ok) throw new Error(data.error ?? 'Unable to load collection.');
+        if (!cancelled) setItems(data.items ?? []);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Unable to load collection.');
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
-
-    const debounceMs = filters.search ? 300 : 0;
-    const timer = window.setTimeout(() => {
-      void loadCollection();
-    }, debounceMs);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+    const t = window.setTimeout(() => { void load(); }, filters.search ? 300 : 0);
+    return () => { cancelled = true; window.clearTimeout(t); };
   }, [filters]);
+
+  const gradedCount = items.filter(i => i.conditionType === 'graded').length;
+  const rawCount = items.filter(i => i.conditionType !== 'graded').length;
+  const totalValue = items.reduce((s, i) => s + (i.currentValue ?? i.purchasePrice ?? 0), 0);
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
-              My Collection
-            </h1>
-            <span className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-sm font-medium text-ash-300">
-              {loading ? '…' : items.length}
-            </span>
-          </div>
-          <p className="text-ash-300">Track owned cards, grades, and purchase details.</p>
+      {/* Masthead */}
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <Eyebrow>Your collection</Eyebrow>
+          <h1 className="mt-1 font-serif italic text-[48px] leading-none tracking-tight text-ink">
+            {loading ? '…' : <><span className="text-accent">{items.length}</span> cards.</>}
+          </h1>
+          {!loading && items.length > 0 && (
+            <p className="mt-1.5 font-mono text-[11px] text-ink-3">
+              {gradedCount} graded · {rawCount} raw
+              {totalValue > 0 ? ` · ${formatPrice(totalValue) ?? ''}` : ''}
+            </p>
+          )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={'/collection/add' as Route}
-            className="inline-flex items-center gap-2 rounded bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-400"
-          >
-            <Plus className="h-4 w-4" />
-            Add Card
-          </Link>
-          <Link
-            href={'/import' as Route}
-            className="inline-flex items-center gap-2 rounded border border-ink-700 bg-ink-900 px-5 py-2.5 text-sm font-medium text-ash-200 hover:bg-ink-800"
-          >
-            <Upload className="h-4 w-4" />
-            Import
-          </Link>
+        <Link href="/collection/add" className="inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90">
+          + Add card
+        </Link>
+      </div>
+
+      <Rule />
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* View toggle */}
+        <div className="flex rounded border border-rule overflow-hidden">
+          {([{ mode: 'grid', icon: <Grid3X3 className="h-3.5 w-3.5" /> }, { mode: 'list', icon: <List className="h-3.5 w-3.5" /> }] as const).map(v => (
+            <button key={v.mode} type="button" onClick={() => setViewMode(v.mode)}
+              className={`flex h-8 w-8 items-center justify-center transition-colors ${viewMode === v.mode ? 'bg-ink text-paper' : 'text-ink-3 hover:text-ink'}`}>
+              {v.icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Filters */}
+        {[
+          { label: 'Sport', value: sport, options: ['All', ...SPORTS], set: setSport },
+          { label: 'Condition', value: condition, options: ['All', 'Graded', 'Raw'], set: setCondition },
+          { label: 'Company', value: company, options: ['All', ...GRADING_COMPANIES.filter(c => c !== 'Other')], set: setCompany },
+        ].map(f => (
+          <select key={f.label} value={f.value} onChange={e => f.set(e.target.value)}
+            className="h-8 rounded border border-rule bg-surface px-2.5 font-mono text-[11px] text-ink-2 outline-none focus:border-ink hover:border-ink-2 transition-colors">
+            {f.options.map(o => <option key={o} value={o}>{o === 'All' ? f.label + ': All' : o}</option>)}
+          </select>
+        ))}
+
+        <select value={sortValue} onChange={e => setSortValue(e.target.value)}
+          className="h-8 rounded border border-rule bg-surface px-2.5 font-mono text-[11px] text-ink-2 outline-none focus:border-ink hover:border-ink-2 transition-colors">
+          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+
+        {/* Search */}
+        <div className="ml-auto flex items-center gap-2 rounded border border-rule px-2.5 h-8">
+          <Search className="h-3 w-3 text-ink-3" />
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search player or set…"
+            className="w-40 bg-transparent font-mono text-[11px] text-ink placeholder:text-ink-3 outline-none" />
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 space-y-3 rounded border border-ink-700 bg-ink-900/95 p-4  backdrop-blur">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search player or set..."
-            className="flex-1 rounded border border-ink-700 bg-ink-800 px-4 py-2 text-sm outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`rounded-full border p-2 ${viewMode === 'grid' ? 'border-brand-500 bg-brand-900/20 text-brand-500' : 'border-ink-700 text-ash-300'}`}
-              aria-label="Grid view"
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`rounded-full border p-2 ${viewMode === 'list' ? 'border-brand-500 bg-brand-900/20 text-brand-500' : 'border-ink-700 text-ash-300'}`}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      {error && <FetchErrorBanner message={error} onRetry={() => { void (async () => {
+        setLoading(true); setError('');
+        try {
+          const res = await fetch(`/api/collection?${buildCollectionQuery(filters)}`);
+          const data = await readJsonResponse<{ items?: CollectionCardItem[]; error?: string }>(res);
+          if (!res.ok) throw new Error(data.error ?? 'Unable to load collection.');
+          setItems(data.items ?? []);
+        } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load collection.'); }
+        finally { setLoading(false); }
+      })(); }} />}
 
-        <div className="flex flex-wrap gap-2">
-          <FilterSelect
-            label="Sport"
-            value={sportFilter}
-            options={['All', ...SPORTS]}
-            onChange={setSportFilter}
-          />
-          <FilterSelect
-            label="Condition"
-            value={conditionFilter}
-            options={['All', 'Graded', 'Raw']}
-            onChange={setConditionFilter}
-          />
-          <FilterSelect
-            label="Company"
-            value={companyFilter}
-            options={['All', ...GRADING_COMPANIES.filter((c) => c !== 'Other')]}
-            onChange={setCompanyFilter}
-          />
-          <FilterSelect
-            label="Sort"
-            value={sortValue}
-            options={SORT_OPTIONS.map((o) => o.value)}
-            labels={SORT_OPTIONS.reduce<Record<string, string>>((acc, o) => {
-              acc[o.value] = o.label;
-              return acc;
-            }, {})}
-            onChange={setSortValue}
-          />
-        </div>
-      </div>
-
-      {error ? (
-        <FetchErrorBanner
-          message={error}
-          onRetry={() => {
-            void (async () => {
-              setLoading(true);
-              setError('');
-              try {
-                const response = await fetch(`/api/collection?${buildCollectionQuery(filters)}`);
-                const data = await readJsonResponse<{ items?: CollectionCardItem[]; error?: string }>(
-                  response
-                );
-                if (!response.ok) throw new Error(data.error ?? 'Unable to load collection.');
-                setItems(data.items ?? []);
-              } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'Unable to load collection.');
-              } finally {
-                setLoading(false);
-              }
-            })();
-          }}
-        />
-      ) : null}
-
+      {/* Content */}
       {loading ? (
         <CollectionSkeleton viewMode={viewMode} />
       ) : items.length === 0 ? (
         <EmptyCollection />
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <CollectionGridCard key={item.id} item={item} />
-          ))}
+        <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          {items.map(item => <GridCard key={item.id} item={item} />)}
         </div>
       ) : (
-        <CollectionListTable items={items} onSelect={(id) => router.push(`/collection/${id}` as Route)} />
+        <TableView items={items} onSelect={id => router.push(`/collection/${id}` as Route)} />
       )}
     </section>
   );
 }
 
-function FilterSelect({
-  label,
-  value,
-  options,
-  labels,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  labels?: Record<string, string>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm text-ash-300">
-      <span className="font-medium">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1.5 text-sm text-ash-200 outline-none focus:border-brand-500/50"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {labels?.[option] ?? option}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function CollectionGridCard({ item }: { item: CollectionCardItem }) {
+function GridCard({ item }: { item: CollectionCardItem }) {
   const player = displayPlayer(item);
-  const year = item.year;
-  const setName = displaySetName(item);
   const badge = formatGradeBadge(item.conditionType, item.grade, item.gradingCompany);
-  const price = formatPrice(item.purchasePrice);
-
+  const value = formatPrice(item.currentValue ?? item.purchasePrice);
   return (
-    <Link
-      href={`/collection/${item.id}` as Route}
-      className="block overflow-hidden rounded border border-ink-700 bg-ink-900  transition-shadow hover:"
-    >
-      <div className="relative aspect-[3/4] bg-ink-800">
-        {item.frontImageUrl ? (
-          <CardImage src={item.frontImageUrl} alt={player} fill className="h-full w-full" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-ash-400">
-            <CreditCard className="h-12 w-12" />
-          </div>
-        )}
+    <Link href={`/collection/${item.id}` as Route} className="group block space-y-2">
+      <div className="flex justify-center">
+        <Slab holding={itemToSlab(item)} width={140} height={210} flavor="light"
+          className="transition-transform group-hover:scale-[1.02]" />
       </div>
-      <div className="space-y-2 p-4">
-        <p className="font-semibold tracking-tight text-ash-50">{formatPlayerYearLine(player, year)}</p>
-        {setName ? <p className="truncate text-sm text-ash-400">{setName}</p> : null}
-        <div className="flex items-center justify-between gap-2">
-          <span className="rounded-full bg-ink-800 px-2.5 py-1 text-xs font-semibold text-ash-200">{badge}</span>
-          {price ? <span className="text-xs text-ash-400">{price}</span> : null}
-        </div>
+      <div className="space-y-0.5">
+        <p className="font-serif italic text-[14px] text-ink truncate">{player}</p>
+        <p className="font-mono text-[10px] text-ink-3">
+          {item.year ? `${item.year} · ` : ''}{badge}
+        </p>
+        {value && <p className="font-serif italic text-[13px] text-ink-2">{value}</p>}
       </div>
     </Link>
   );
 }
 
-function CollectionListTable({
-  items,
-  onSelect,
-}: {
-  items: CollectionCardItem[];
-  onSelect: (id: string) => void;
-}) {
+function TableView({ items, onSelect }: { items: CollectionCardItem[]; onSelect: (id: string) => void }) {
   return (
-    <div className="overflow-x-auto rounded border border-ink-700 bg-ink-900 ">
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-ink-700 bg-ink-800 text-xs uppercase tracking-[0.14em] text-ash-400">
-          <tr>
-            <th className="px-4 py-3">Photo</th>
-            <th className="px-4 py-3">Player</th>
-            <th className="px-4 py-3">Year</th>
-            <th className="px-4 py-3">Set</th>
-            <th className="px-4 py-3">Grade</th>
-            <th className="px-4 py-3">Company</th>
-            <th className="px-4 py-3">Bought</th>
-            <th className="px-4 py-3">Paid</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => {
-            const player = displayPlayer(item);
-            const price = formatPrice(item.purchasePrice);
-            return (
-              <tr
-                key={item.id}
-                className="cursor-pointer border-b border-ink-800 last:border-0 hover:bg-ink-800"
-                onClick={() => onSelect(item.id)}
-              >
-                <td className="px-4 py-3">
-                  {item.frontImageUrl ? (
-                    <CardImage
-                      src={item.frontImageUrl}
-                      alt=""
-                      width={36}
-                      height={48}
-                      className="h-12 w-9 rounded"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-9 items-center justify-center rounded bg-ink-800 text-ash-400">
-                      <CreditCard className="h-5 w-5" />
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-3 font-medium text-ash-100">{player}</td>
-                <td className="px-4 py-3 text-ash-300">{item.year ?? '—'}</td>
-                <td className="max-w-[12rem] truncate px-4 py-3 text-ash-300">{displaySetName(item) ?? '—'}</td>
-                <td className="px-4 py-3 text-ash-300">
-                  {item.conditionType === 'graded' && item.grade != null ? item.grade : 'Raw'}
-                </td>
-                <td className="px-4 py-3 text-ash-300">{item.gradingCompany ?? '—'}</td>
-                <td className="px-4 py-3 text-ash-300">{item.purchaseDate ?? '—'}</td>
-                <td className="px-4 py-3 text-ash-300">{price ?? '—'}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="rounded border border-rule overflow-hidden">
+      <div className="hidden lg:grid lg:grid-cols-[32px_56px_1fr_80px_80px_90px] lg:gap-3 lg:bg-surface-2 lg:px-4 lg:py-2.5 border-b border-rule">
+        {['#', 'CARD', 'PLAYER · SET', 'SPORT', 'GRADE', 'VALUE'].map(h => <Eyebrow key={h}>{h}</Eyebrow>)}
+      </div>
+      {items.map((item, i) => {
+        const player = displayPlayer(item);
+        const set = displaySetName(item);
+        const badge = formatGradeBadge(item.conditionType, item.grade, item.gradingCompany);
+        const value = formatPrice(item.currentValue ?? item.purchasePrice);
+        return (
+          <div key={item.id} onClick={() => onSelect(item.id)}
+            className="flex cursor-pointer items-center gap-3 border-b border-rule-soft last:border-b-0 px-4 py-3 hover:bg-surface-2 lg:grid lg:grid-cols-[32px_56px_1fr_80px_80px_90px]">
+            <span className="hidden lg:block font-mono text-[10px] text-ink-4">{String(i + 1).padStart(2, '0')}</span>
+            <div className="flex justify-center">
+              <Slab holding={itemToSlab(item)} width={36} height={54} showLabel={false} flavor="light" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-serif italic text-[14px] text-ink truncate">{player}</p>
+              {set && <p className="font-mono text-[10px] text-ink-3 truncate">{set}</p>}
+            </div>
+            <span className="font-mono text-[11px] text-ink-3">{item.sport ?? '—'}</span>
+            <span className="font-mono text-[11px] text-ink-2">{badge}</span>
+            <span className="font-serif italic text-[14px] text-ink text-right">{value ?? '—'}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function CollectionSkeleton({ viewMode }: { viewMode: ViewMode }) {
-  const count = viewMode === 'grid' ? 9 : 6;
-
-  if (viewMode === 'list') {
-    return (
-      <div className="space-y-2 rounded border border-ink-700 bg-ink-900 p-4 ">
-        {Array.from({ length: count }).map((_, index) => (
-          <div key={index} className="h-12 animate-pulse rounded bg-ink-800" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="overflow-hidden rounded border border-ink-700 bg-ink-900 ">
-          <div className="aspect-[3/4] animate-pulse bg-ink-800" />
-          <div className="space-y-2 p-4">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-ink-800" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-ink-800" />
-          </div>
+function CollectionSkeleton({ viewMode }: { viewMode: 'grid' | 'list' }) {
+  return viewMode === 'grid' ? (
+    <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="aspect-[2/3] animate-pulse rounded bg-rule" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-rule" />
         </div>
+      ))}
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="h-14 animate-pulse rounded border border-rule bg-surface" />
       ))}
     </div>
   );
@@ -411,24 +261,15 @@ function CollectionSkeleton({ viewMode }: { viewMode: ViewMode }) {
 
 function EmptyCollection() {
   return (
-    <div className="rounded border border-dashed border-ink-600 bg-ink-800 px-8 py-16 text-center">
-      <CreditCard className="mx-auto h-12 w-12 text-ash-400" />
-      <h2 className="mt-4 text-xl font-semibold text-ash-100">No cards yet.</h2>
-      <p className="mt-2 text-sm text-ash-300">Add your first card manually or import purchases later.</p>
-      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <Link
-          href={'/collection/add' as Route}
-          className="inline-flex items-center gap-2 rounded bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-400"
-        >
-          <Plus className="h-4 w-4" />
-          Add Your First Card
+    <div className="py-24 text-center">
+      <p className="font-serif italic text-[32px] text-ink-2">Your collection is empty.</p>
+      <p className="mt-2 text-[14px] text-ink-3">Capture your first card.</p>
+      <div className="mt-6 flex justify-center gap-3">
+        <Link href="/collection/add" className="inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90">
+          Add manually
         </Link>
-        <Link
-          href={'/import' as Route}
-          className="inline-flex items-center gap-2 rounded border border-ink-700 bg-ink-900 px-6 py-3 text-sm font-medium text-ash-200 hover:bg-ink-800"
-        >
-          <Upload className="h-4 w-4" />
-          Import from eBay
+        <Link href="/import" className="inline-flex h-9 items-center gap-2 rounded border border-rule px-4 text-[13px] font-medium text-ink hover:bg-surface-2">
+          Import
         </Link>
       </div>
     </div>

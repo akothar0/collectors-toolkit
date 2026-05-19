@@ -31,7 +31,7 @@ export function ButtonGroup<T extends string>({
   return (
     <div className={`space-y-2 ${className}`}>
       {label ? (
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-3">{label}</p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {normalized.map((option) => {
@@ -43,8 +43,8 @@ export function ButtonGroup<T extends string>({
               onClick={() => onChange(option.value)}
               className={`rounded border px-3 py-1.5 text-sm font-medium ${
                 active
-                  ? 'border-brand-500/50 bg-brand-900/30 text-brand-400'
-                  : 'border-ink-600 bg-ink-800 text-ash-300 hover:border-ink-500 hover:text-ash-50'
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-rule bg-surface-2 text-ink-2 hover:border-ink hover:text-ink'
               }`}
             >
               {option.label}

@@ -3,116 +3,77 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { useParams, useRouter } from 'next/navigation';
-import { CreditCard, ExternalLink, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CollectionCardForm } from '@/components/CollectionCardForm';
 import { CollectionPhotoCarousel } from '@/components/CollectionPhotoCarousel';
 import { CollectionPhotoPicker } from '@/components/CollectionPhotoPicker';
-import {
-  detailToFormValues,
-  formValuesToPayload,
-  type CollectionCardDetail,
-} from '@/lib/collection-detail';
-import {
-  makePendingCollectionPhotos,
-  type PendingCollectionPhoto,
-  uploadCollectionPhotoFiles,
-} from '@/lib/collection-photo-client';
-import {
-  displayPlayer,
-  displaySetName,
-  formatDateLabel,
-  formatGainLoss,
-  formatGradeBadge,
-  formatPlayerYearLine,
-  formatPrice,
-} from '@/lib/collection-presenter';
+import { Eyebrow, Rule } from '@/components/editorial';
+import { Slab, type SlabHolding } from '@/components/Slab';
+import { detailToFormValues, formValuesToPayload, type CollectionCardDetail } from '@/lib/collection-detail';
+import { makePendingCollectionPhotos, type PendingCollectionPhoto, uploadCollectionPhotoFiles } from '@/lib/collection-photo-client';
+import { displayPlayer, displaySetName, formatDateLabel, formatGainLoss, formatGradeBadge, formatPrice } from '@/lib/collection-presenter';
+import { MarketPricingPanel } from '@/components/pricing/MarketPricingPanel';
 import { getCertUrl } from '@/lib/cert-number';
 import { readJsonResponse } from '@/lib/http-json';
 
+const SPORT_TINTS: Record<string, string> = {
+  NBA: '#0c2340', NFL: '#8b1a1a', MLB: '#1a3a1a', WNBA: '#b8860b',
+};
+
 export default function CollectionCardDetailPage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const cardId = params.id;
+  const params  = useParams<{ id: string }>();
+  const router  = useRouter();
+  const cardId  = params.id;
 
-  const [card, setCard] = useState<CollectionCardDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const [notes, setNotes] = useState('');
-  const [notesSaving, setNotesSaving] = useState(false);
-
+  const [card,         setCard]         = useState<CollectionCardDetail | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
+  const [notes,        setNotes]        = useState('');
+  const [notesSaving,  setNotesSaving]  = useState(false);
   const [valueEditing, setValueEditing] = useState(false);
-  const [valueInput, setValueInput] = useState('');
-  const [valueSaving, setValueSaving] = useState(false);
-
+  const [valueInput,   setValueInput]   = useState('');
+  const [valueSaving,  setValueSaving]  = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [pendingPhotos, setPendingPhotos] = useState<PendingCollectionPhoto[]>([]);
-  const pendingPhotosRef = useRef<PendingCollectionPhoto[]>([]);
-
-  const [editing, setEditing] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
-
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pendingPhotos,  setPendingPhotos]  = useState<PendingCollectionPhoto[]>([]);
+  const [editing,      setEditing]      = useState(false);
+  const [editLoading,  setEditLoading]  = useState(false);
+  const [editError,    setEditError]    = useState('');
+  const [deleteOpen,   setDeleteOpen]   = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [wantLoading,  setWantLoading]  = useState(false);
 
-  const [wantLoading, setWantLoading] = useState(false);
-
+  const pendingPhotosRef = useRef<PendingCollectionPhoto[]>([]);
   pendingPhotosRef.current = pendingPhotos;
 
   const loadCard = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      const response = await fetch(`/api/collection/${cardId}`);
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (response.status === 404) {
-        router.replace('/collection');
-        return;
-      }
-      if (!response.ok) {
-        throw new Error(data.error ?? 'Unable to load card.');
-      }
+      const res = await fetch(`/api/collection/${cardId}`);
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (res.status === 404) { router.replace('/collection'); return; }
+      if (!res.ok) throw new Error(data.error ?? 'Unable to load card.');
       setCard(data);
       setNotes(data.notes ?? '');
       setValueInput(data.currentValue != null ? String(data.currentValue) : '');
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load card.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load card.');
+    } finally { setLoading(false); }
   }, [cardId, router]);
 
-  useEffect(() => {
-    void loadCard();
-  }, [loadCard]);
-
-  useEffect(() => {
-    return () => {
-      for (const photo of pendingPhotosRef.current) {
-        URL.revokeObjectURL(photo.previewUrl);
-      }
-    };
-  }, []);
+  useEffect(() => { void loadCard(); }, [loadCard]);
+  useEffect(() => () => { pendingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.previewUrl)); }, []);
 
   async function saveNotes() {
     if (!card || notes === (card.notes ?? '')) return;
     setNotesSaving(true);
     try {
-      const response = await fetch(`/api/collection/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes }),
-      });
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to save notes.');
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes }) });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to save notes.');
       setCard(data);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save notes.');
-    } finally {
-      setNotesSaving(false);
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save notes.'); }
+    finally { setNotesSaving(false); }
   }
 
   async function saveValue() {
@@ -120,120 +81,65 @@ export default function CollectionCardDetailPage() {
     setValueSaving(true);
     try {
       const parsed = valueInput.trim() ? Number.parseFloat(valueInput) : null;
-      const response = await fetch(`/api/collection/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentValue: parsed }),
-      });
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to update value.');
-      setCard(data);
-      setValueEditing(false);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to update value.');
-    } finally {
-      setValueSaving(false);
-    }
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentValue: parsed }) });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to update value.');
+      setCard(data); setValueEditing(false);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update value.'); }
+    finally { setValueSaving(false); }
   }
 
   async function handleAddPhotos() {
     if (!card || pendingPhotos.length === 0) return;
     setPhotoUploading(true);
     try {
-      const uploadUrls = await uploadCollectionPhotoFiles(
-        pendingPhotos.map((photo) => photo.file)
-      );
-      const response = await fetch(`/api/collection/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appendPhotoUrls: uploadUrls }),
-      });
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to save photos.');
+      const urls = await uploadCollectionPhotoFiles(pendingPhotos.map(p => p.file));
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appendPhotoUrls: urls }) });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to save photos.');
       setCard(data);
-      setPendingPhotos((current) => {
-        for (const photo of current) {
-          URL.revokeObjectURL(photo.previewUrl);
-        }
-        return [];
-      });
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Unable to update photos.');
-    } finally {
-      setPhotoUploading(false);
-    }
+      setPendingPhotos(cur => { cur.forEach(p => URL.revokeObjectURL(p.previewUrl)); return []; });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update photos.'); }
+    finally { setPhotoUploading(false); }
   }
 
   async function handleRemovePhoto(photoId: string) {
     if (!card) return;
     setPhotoUploading(true);
     try {
-      const response = await fetch(`/api/collection/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ removePhotoIds: [photoId] }),
-      });
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to remove photo.');
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ removePhotoIds: [photoId] }) });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to remove photo.');
       setCard(data);
-    } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : 'Unable to remove photo.');
-    } finally {
-      setPhotoUploading(false);
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to remove photo.'); }
+    finally { setPhotoUploading(false); }
   }
 
-  async function handleEditSubmit(
-    values: ReturnType<typeof detailToFormValues>,
-    photoFiles: File[],
-    _removedPhotoIds: string[]
-  ) {
+  async function handleEditSubmit(values: ReturnType<typeof detailToFormValues>, photoFiles: File[], _removed: string[]) {
     if (!card) return;
-    setEditLoading(true);
-    setEditError('');
-
+    setEditLoading(true); setEditError('');
     try {
-      const appendedPhotoUrls = await uploadCollectionPhotoFiles(photoFiles);
-      const photoUrls = [
-        ...values.photos.map((photo) => photo.imageUrl),
-        ...appendedPhotoUrls,
-      ];
-
-      const payload = {
-        ...formValuesToPayload(values),
-        frontImageUrl: photoUrls[0] ?? null,
-        photoUrls,
-      };
-      const response = await fetch(`/api/collection/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to save changes.');
-      setCard(data);
-      setNotes(data.notes ?? '');
-      setValueInput(data.currentValue != null ? String(data.currentValue) : '');
+      const urls = await uploadCollectionPhotoFiles(photoFiles);
+      const photoUrls = [...values.photos.map(p => p.imageUrl), ...urls];
+      const payload = { ...formValuesToPayload(values), frontImageUrl: photoUrls[0] ?? null, photoUrls };
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await readJsonResponse<CollectionCardDetail & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to save changes.');
+      setCard(data); setNotes(data.notes ?? ''); setValueInput(data.currentValue != null ? String(data.currentValue) : '');
       setEditing(false);
-    } catch (submitError) {
-      setEditError(submitError instanceof Error ? submitError.message : 'Unable to save changes.');
-    } finally {
-      setEditLoading(false);
-    }
+    } catch (e) { setEditError(e instanceof Error ? e.message : 'Unable to save changes.'); }
+    finally { setEditLoading(false); }
   }
 
   async function handleDelete() {
     if (!card) return;
     setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/collection/${card.id}`, { method: 'DELETE' });
-      const data = await readJsonResponse<{ success?: boolean; error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to delete card.');
+      const res = await fetch(`/api/collection/${card.id}`, { method: 'DELETE' });
+      const data = await readJsonResponse<{ success?: boolean; error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to delete card.');
       router.push('/collection');
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete card.');
-      setDeleteLoading(false);
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete card.'); setDeleteLoading(false); }
   }
 
   async function handleAddToWantList() {
@@ -241,43 +147,34 @@ export default function CollectionCardDetailPage() {
     setWantLoading(true);
     try {
       const description = [displayPlayer(card), displaySetName(card)].filter(Boolean).join(' — ') || displayPlayer(card);
-      const response = await fetch('/api/wantlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description,
-          player: card.player,
-          year: card.year,
-          setName: card.setName,
-        }),
-      });
-      const data = await readJsonResponse<{ error?: string }>(response);
-      if (!response.ok) throw new Error(data.error ?? 'Unable to add to want list.');
-    } catch (wantError) {
-      setError(wantError instanceof Error ? wantError.message : 'Unable to add to want list.');
-    } finally {
-      setWantLoading(false);
-    }
+      const res = await fetch('/api/wantlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description, player: card.player, year: card.year, setName: card.setName }) });
+      const data = await readJsonResponse<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to add to want list.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add to want list.'); }
+    finally { setWantLoading(false); }
   }
 
   if (loading) {
-    return <p className="text-ash-300">Loading card...</p>;
+    return (
+      <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+        <div className="aspect-[2/3] animate-pulse rounded border border-rule bg-surface" />
+        <div className="space-y-4">
+          {[60, 120, 80, 100].map(h => <div key={h} className={`h-${h > 100 ? 24 : h > 80 ? 20 : h > 60 ? 14 : 10} animate-pulse rounded border border-rule bg-surface`} />)}
+        </div>
+      </div>
+    );
   }
 
   if (error && !card) {
     return (
-      <section className="space-y-4">
-        <p className="text-rose-600">{error}</p>
-        <Link href="/collection" className="text-brand-500 hover:underline">
-          Back to collection
-        </Link>
-      </section>
+      <div className="space-y-3">
+        <p className="font-mono text-[11px] text-negative">{error}</p>
+        <Link href="/collection" className="font-mono text-[11px] text-accent hover:underline">← Back to collection</Link>
+      </div>
     );
   }
 
-  if (!card) {
-    return null;
-  }
+  if (!card) return null;
 
   const player = displayPlayer(card);
   const setName = displaySetName(card);
@@ -287,271 +184,202 @@ export default function CollectionCardDetailPage() {
   const purchasePriceLabel = formatPrice(card.purchasePrice);
   const currentValueLabel = formatPrice(card.currentValue);
 
+  const heroSlab: SlabHolding = {
+    player,
+    year: card.year ?? 2020,
+    set: setName ?? '',
+    grade: badge,
+    sport: card.sport ?? null,
+    tint: SPORT_TINTS[card.sport ?? ''] ?? '#2d2e34',
+    imageUrl: card.photos[0]?.imageUrl ?? card.frontImageUrl ?? null,
+  };
+
   return (
-    <section className="space-y-8">
-      <Link href="/collection" className="text-sm font-medium text-brand-500 hover:underline">
-        Back to collection
-      </Link>
+    <section className="space-y-6">
+      <Link href="/collection" className="font-mono text-[11px] text-ink-3 hover:text-ink">← Collection</Link>
 
       {editing ? (
-        <div className="rounded border border-ink-700 bg-ink-900 p-6  md:p-8">
-          <h1 className="mb-6 text-2xl font-semibold tracking-tight text-ash-50">Edit card details</h1>
+        <div className="rounded border border-rule bg-surface p-6">
+          <h2 className="mb-6 font-serif italic text-[28px] text-ink">Edit card details</h2>
           <CollectionCardForm
             initialValues={detailToFormValues(card)}
             onSubmit={handleEditSubmit}
-            onCancel={() => {
-              setEditing(false);
-              setEditError('');
-            }}
-            submitLabel="Save Changes"
+            onCancel={() => { setEditing(false); setEditError(''); }}
+            submitLabel="Save changes"
             loading={editLoading}
             error={editError}
           />
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+          {/* Left — slab + photos */}
           <div className="space-y-4">
+            <div className="flex justify-center">
+              <Slab holding={heroSlab} width={250} height={375} flavor="light" />
+            </div>
             <CollectionPhotoCarousel photos={card.photos} alt={player} />
-            <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Photos</p>
-              <div className="mt-3 space-y-4">
-                <CollectionPhotoPicker
-                  existingPhotos={card.photos}
-                  pendingPhotos={pendingPhotos}
-                  onFilesSelected={(files) => {
-                    setPendingPhotos((current) => [...current, ...makePendingCollectionPhotos(files)]);
-                  }}
-                  onRemoveExisting={handleRemovePhoto}
-                  onRemovePending={(pendingId) => {
-                    setPendingPhotos((current) => {
-                      const target = current.find((photo) => photo.id === pendingId);
-                      if (target) {
-                        URL.revokeObjectURL(target.previewUrl);
-                      }
-                      return current.filter((photo) => photo.id !== pendingId);
-                    });
-                  }}
-                  disabled={photoUploading}
-                  helperText="Swipe through saved photos above. Add more images here or remove shots you no longer want on this card."
-                />
-                {pendingPhotos.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleAddPhotos}
-                    disabled={photoUploading}
-                    className="inline-flex items-center justify-center rounded bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
-                  >
-                    {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Upload Selected Photos'}
-                  </button>
-                ) : null}
-              </div>
+            <div className="rounded border border-rule bg-surface p-4">
+              <Eyebrow className="mb-3">Photos</Eyebrow>
+              <CollectionPhotoPicker
+                existingPhotos={card.photos}
+                pendingPhotos={pendingPhotos}
+                onFilesSelected={files => setPendingPhotos(cur => [...cur, ...makePendingCollectionPhotos(files)])}
+                onRemoveExisting={handleRemovePhoto}
+                onRemovePending={id => setPendingPhotos(cur => {
+                  const t = cur.find(p => p.id === id);
+                  if (t) URL.revokeObjectURL(t.previewUrl);
+                  return cur.filter(p => p.id !== id);
+                })}
+                disabled={photoUploading}
+                helperText="Swipe through saved photos above. Add more or remove shots you no longer want."
+              />
+              {pendingPhotos.length > 0 && (
+                <button type="button" onClick={handleAddPhotos} disabled={photoUploading}
+                  className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90 disabled:opacity-50">
+                  {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Upload selected photos'}
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="space-y-6">
+          {/* Right — info */}
+          <div className="space-y-5">
+            {/* Heading */}
             <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
-                {player}
-              </h1>
-              <p className="mt-2 text-lg text-ash-300">{formatPlayerYearLine(player, card.year)}</p>
-              {setName ? <p className="mt-1 text-ash-400">{setName}</p> : null}
+              <h1 className="font-serif italic text-[44px] leading-tight text-ink">{player}</h1>
+              <p className="font-mono text-[11px] text-ink-3">
+                {[card.year, setName, card.cardNumber ? `#${card.cardNumber}` : null, card.sport].filter(Boolean).join(' · ')}
+              </p>
             </div>
 
-            <div className="rounded border border-ink-700 bg-ink-800 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Grade</p>
-              <p className="mt-2 text-2xl font-semibold text-ash-50">{badge}</p>
-              {card.gradingCompany && card.conditionType === 'graded' ? (
-                <p className="text-sm text-ash-300">{card.gradingCompany}</p>
-              ) : null}
-              {card.certNumber ? (
-                <p className="mt-1 text-sm text-ash-300">Cert #{card.certNumber}</p>
-              ) : null}
-              {certUrl ? (
-                <a
-                  href={certUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-500 hover:underline"
-                >
-                  View cert lookup <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              ) : null}
+            <Rule />
+
+            {/* Grade + cert */}
+            <div className="flex items-start justify-between gap-4 rounded border border-rule px-4 py-3">
+              <div>
+                <Eyebrow className="mb-1">Grade</Eyebrow>
+                <p className="font-serif italic text-[28px] leading-none text-ink">{badge}</p>
+              </div>
+              {(card.certNumber || certUrl) && (
+                <div className="text-right">
+                  {card.certNumber && <p className="font-mono text-[12px] text-ink">#{card.certNumber}</p>}
+                  {certUrl && (
+                    <a href={certUrl} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-[10px] text-accent hover:underline">
+                      Verify <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
+            {/* Purchase */}
             {(purchasePriceLabel || card.purchaseDate || card.purchaseSource) && (
-              <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Purchase</p>
-                <p className="mt-2 text-sm text-ash-200">
-                  {[purchasePriceLabel, formatDateLabel(card.purchaseDate), card.purchaseSource]
-                    .filter(Boolean)
-                    .join(' · ')}
+              <div>
+                <Eyebrow className="mb-1">Purchase</Eyebrow>
+                <p className="text-[13px] text-ink-2">
+                  {[purchasePriceLabel, formatDateLabel(card.purchaseDate), card.purchaseSource].filter(Boolean).join(' · ')}
                 </p>
               </div>
             )}
 
-            <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Current value</p>
-                  <p className="mt-2 text-2xl font-semibold text-ash-50">
-                    {currentValueLabel ?? 'Not set'}
-                  </p>
-                  {card.valueUpdatedAt ? (
-                    <p className="text-xs text-ash-400">
-                      Last updated {formatDateLabel(card.valueUpdatedAt)}
-                    </p>
-                  ) : null}
-                </div>
-                {!valueEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => setValueEditing(true)}
-                    className="text-sm font-medium text-brand-500 hover:underline"
-                  >
-                    Update Value
-                  </button>
-                ) : null}
+            {/* Current value */}
+            <div>
+              <div className="flex items-baseline justify-between">
+                <Eyebrow>Current value</Eyebrow>
+                {!valueEditing && (
+                  <button type="button" onClick={() => setValueEditing(true)}
+                    className="font-mono text-[10px] text-ink-3 hover:text-ink">EDIT</button>
+                )}
               </div>
-              {valueEditing ? (
-                <div className="mt-4 flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={valueInput}
-                    onChange={(e) => setValueInput(e.target.value)}
-                    className="flex-1 rounded border border-ink-700 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={saveValue}
-                    disabled={valueSaving}
-                    className="rounded bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
-                  >
-                    {valueSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              <p className="mt-1 font-serif italic text-[28px] leading-none text-ink">
+                {currentValueLabel ?? 'Not set'}
+              </p>
+              {gainLoss && (
+                <p className={`mt-1 font-mono text-[11px] ${gainLoss.delta >= 0 ? 'text-positive' : 'text-negative'}`}>
+                  {gainLoss.delta >= 0 ? '+' : ''}{formatPrice(gainLoss.delta)} ({gainLoss.percent >= 0 ? '+' : ''}{gainLoss.percent.toFixed(1)}%)
+                </p>
+              )}
+              {valueEditing && (
+                <div className="mt-3 flex gap-2">
+                  <input type="number" min={0} step="0.01" value={valueInput}
+                    onChange={e => setValueInput(e.target.value)}
+                    className="flex-1 rounded border border-rule bg-surface-2 px-3 py-2 text-[13px] text-ink outline-none focus:border-ink" />
+                  <button type="button" onClick={saveValue} disabled={valueSaving}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink px-3 text-[13px] font-medium text-paper hover:bg-ink/90 disabled:opacity-50">
+                    {valueSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setValueEditing(false);
-                      setValueInput(card.currentValue != null ? String(card.currentValue) : '');
-                    }}
-                    className="rounded border border-ink-700 px-4 py-2 text-sm text-ash-300"
-                  >
+                  <button type="button" onClick={() => { setValueEditing(false); setValueInput(card.currentValue != null ? String(card.currentValue) : ''); }}
+                    className="inline-flex h-9 items-center rounded border border-rule px-3 text-[13px] text-ink-2 hover:bg-surface-2">
                     Cancel
                   </button>
                 </div>
-              ) : null}
-              {gainLoss ? (
-                <p
-                  className={`mt-3 text-sm font-medium ${gainLoss.delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
-                >
-                  {gainLoss.delta >= 0 ? '+' : ''}
-                  {formatPrice(gainLoss.delta)} ({gainLoss.percent >= 0 ? '+' : ''}
-                  {gainLoss.percent.toFixed(1)}%)
-                </p>
-              ) : null}
+              )}
             </div>
 
-            <label className="block rounded border border-ink-700 bg-ink-800 p-4">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Notes</span>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                onBlur={saveNotes}
-                rows={4}
-                className="mt-2 w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
-              />
-              {notesSaving ? <p className="mt-1 text-xs text-ash-500">Saving...</p> : null}
+            {/* Market pricing (pricing workstream) */}
+            <MarketPricingPanel collectionCardId={card.id} onPricingUpdated={loadCard} onRequestEdit={() => setEditing(true)} />
+
+            {/* Notes */}
+            <label className="block">
+              <Eyebrow className="mb-1.5">Notes</Eyebrow>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={saveNotes} rows={4}
+                className="w-full rounded border border-rule bg-surface-2 px-3 py-2.5 text-[13px] text-ink outline-none focus:border-ink" />
+              {notesSaving && <p className="mt-1 font-mono text-[10px] text-ink-3">Saving…</p>}
             </label>
 
-            <div className="space-y-2 rounded border border-ink-700 bg-ink-900 p-4 text-sm text-ash-300 ">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Provenance</p>
-              {card.scanSession ? (
-                <p>
-                  Added via{' '}
-                  <Link href={`/scanner/history/${card.scanId}` as Route} className="text-brand-500 hover:underline">
-                    scanner scan
-                  </Link>{' '}
-                  on {formatDateLabel(card.scanSession.createdAt)}
-                </p>
-              ) : null}
-              {card.gradeSession ? (
-                <p>
-                  Graded with{' '}
-                  <Link href="/grader" className="text-brand-500 hover:underline">
-                    AI grader
-                  </Link>{' '}
-                  on {formatDateLabel(card.gradeSession.createdAt)}
-                </p>
-              ) : null}
-              {card.importItem ? (
-                <p>
-                  Imported from {card.importItem.rawSource ?? 'import'} on{' '}
-                  {formatDateLabel(card.importItem.createdAt)}
-                </p>
-              ) : null}
-              {!card.scanSession && !card.gradeSession && !card.importItem ? (
-                <p>Added manually to collection.</p>
-              ) : null}
+            {/* Provenance */}
+            <div>
+              <Eyebrow className="mb-2">Provenance</Eyebrow>
+              <p className="text-[13px] text-ink-2">
+                {card.scanSession ? <>Scanned on {formatDateLabel(card.scanSession.createdAt)}{' · '}<Link href={`/scanner/history/${card.scanId}` as Route} className="text-accent hover:underline">view scan</Link></> :
+                 card.gradeSession ? <>Graded {formatDateLabel(card.gradeSession.createdAt)}</> :
+                 card.importItem ? <>Imported from {card.importItem.rawSource ?? 'import'} on {formatDateLabel(card.importItem.createdAt)}</> :
+                 'Added manually to collection.'}
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="inline-flex items-center gap-2 rounded border border-ink-700 bg-ink-900 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
-              >
-                <Pencil className="h-4 w-4" /> Edit Details
+            {error && <p className="font-mono text-[11px] text-negative">{error}</p>}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button type="button" onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-2 rounded border border-rule px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface-2">
+                <Pencil className="h-3.5 w-3.5" /> Edit details
               </button>
-              <button
-                type="button"
-                onClick={() => setDeleteOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-900"
-              >
-                <Trash2 className="h-4 w-4" /> Delete
+              <button type="button" onClick={() => setDeleteOpen(true)}
+                className="inline-flex items-center gap-2 rounded border border-negative/30 px-4 py-2 text-[13px] font-medium text-negative hover:bg-negative/5">
+                <Trash2 className="h-3.5 w-3.5" /> Delete
               </button>
-              <button
-                type="button"
-                onClick={handleAddToWantList}
-                disabled={wantLoading}
-                className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-900/20 px-4 py-2 text-sm font-medium text-brand-500 hover:bg-brand-100 disabled:opacity-60"
-              >
-                {wantLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Add to Want List
+              <button type="button" onClick={handleAddToWantList} disabled={wantLoading}
+                className="inline-flex items-center gap-2 rounded border border-rule px-4 py-2 text-[13px] font-medium text-ink-2 hover:bg-surface-2 disabled:opacity-50">
+                {wantLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Add to want list
               </button>
             </div>
-
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </div>
         </div>
       )}
 
-      {deleteOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/50 p-4">
-          <div className="w-full max-w-md rounded border border-ink-700 bg-ink-900 p-6 ">
-            <h2 className="text-lg font-semibold text-ash-50">Delete this card?</h2>
-            <p className="mt-2 text-sm text-ash-300">This cannot be undone.</p>
+      {/* Delete confirm */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+          <div className="w-full max-w-sm rounded border border-rule bg-surface p-6 shadow-popover">
+            <h2 className="font-serif italic text-[24px] text-ink">Delete this card?</h2>
+            <p className="mt-1.5 text-[13px] text-ink-2">This cannot be undone.</p>
             <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setDeleteOpen(false)}
-                className="flex-1 rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200"
-              >
+              <button type="button" onClick={() => setDeleteOpen(false)}
+                className="flex-1 rounded border border-rule px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface-2">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteLoading}
-                className="flex-1 rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
-              >
+              <button type="button" onClick={handleDelete} disabled={deleteLoading}
+                className="flex-1 rounded-md bg-negative px-4 py-2 text-[13px] font-medium text-white hover:bg-negative/90 disabled:opacity-60">
                 {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
               </button>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </section>
   );
 }

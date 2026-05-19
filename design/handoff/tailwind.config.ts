@@ -34,7 +34,6 @@ const config: Config = {
         psa: '#c41e3a',
         bgs: '#101935',
         sgc: '#1d3e8b',
-
       },
       fontFamily: {
         // Wired up via next/font/google in src/app/layout.tsx — see handoff/layout.tsx.

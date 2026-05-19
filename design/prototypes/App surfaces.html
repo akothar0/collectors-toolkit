@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Collectors Toolkit · All surfaces</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: #f0eee9;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    * { box-sizing: border-box; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" src="surface-atoms.jsx"></script>
+  <script type="text/babel" src="grader.jsx"></script>
+  <script type="text/babel" src="collection.jsx"></script>
+  <script type="text/babel" src="import-flow.jsx"></script>
+  <script type="text/babel" src="portfolio.jsx"></script>
+  <script type="text/babel" src="sets.jsx"></script>
+  <script type="text/babel" src="wantlist.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const APP_TWEAKS = /*EDITMODE-BEGIN*/{
+      "graderPhase": "result",
+      "collectionView": "grid",
+      "importView": "review"
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(APP_TWEAKS);
+      return (
+        <>
+          <DesignCanvas>
+            <DCSection
+              id="grader"
+              title="Grader · raw card AI grading"
+              subtitle="Photo flow (1–4 captures) → sub-grades + ROI + grading-company recommendation. Toggle phase in Tweaks.">
+              <DCArtboard id="grader-desktop" label={`Grader — ${t.graderPhase === 'capture' ? 'Capture flow' : 'Result page'}`} width={1320} height={t.graderPhase === 'capture' ? 1100 : 1660}>
+                <GraderDesktop initialPhase={t.graderPhase}/>
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="collection"
+              title="Collection · grid + card detail"
+              subtitle="The main destination — slab wall for browsing, editorial card detail page. Toggle view in Tweaks.">
+              <DCArtboard id="collection-desktop" label={`Collection — ${t.collectionView === 'detail' ? 'Card detail' : 'Grid'}`} width={1320} height={t.collectionView === 'detail' ? 1380 : 1380}>
+                <CollectionDesktop initialView={t.collectionView}/>
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="import"
+              title="Import · the painful screen, redesigned"
+              subtitle="Source picker hub and the review table (the screen at _ref/import-review-page.png that motivated the redesign). Toggle in Tweaks.">
+              <DCArtboard id="import-desktop" label={`Import — ${t.importView === 'review' ? 'Review table' : 'Hub'}`} width={1320} height={t.importView === 'review' ? 1480 : 1280}>
+                <ImportDesktop view={t.importView}/>
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="portfolio"
+              title="Portfolio · the book of record"
+              subtitle="Stat hero, 12-month chart, breakdowns by sport and grade, top 10 holdings.">
+              <DCArtboard id="portfolio-desktop" label="Portfolio — Dashboard" width={1320} height={1840}>
+                <PortfolioDesktop/>
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="sets"
+              title="Sets · completion tracker"
+              subtitle="Set detail page with bit-grid hero and a hunting list. List view skipped — it composes from this template.">
+              <DCArtboard id="sets-desktop" label="Sets — 2024 Topps Chrome detail" width={1320} height={1320}>
+                <SetsDesktop/>
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection
+              id="wantlist"
+              title="Want list · the hunt"
+              subtitle="Targets, comps, status pills, quick add. Each row tells you if a card is under or over your target.">
+              <DCArtboard id="wantlist-desktop" label="Want list" width={1320} height={1180}>
+                <WantListDesktop/>
+              </DCArtboard>
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Surfaces">
+            <TweakSection label="Grader">
+              <TweakRadio
+                label="Phase"
+                value={t.graderPhase}
+                onChange={v => setTweak('graderPhase', v)}
+                options={[
+                  { label: 'Capture', value: 'capture' },
+                  { label: 'Result',  value: 'result' },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection label="Collection">
+              <TweakRadio
+                label="View"
+                value={t.collectionView}
+                onChange={v => setTweak('collectionView', v)}
+                options={[
+                  { label: 'Grid',   value: 'grid' },
+                  { label: 'Detail', value: 'detail' },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection label="Import">
+              <TweakRadio
+                label="View"
+                value={t.importView}
+                onChange={v => setTweak('importView', v)}
+                options={[
+                  { label: 'Hub',    value: 'hub' },
+                  { label: 'Review', value: 'review' },
+                ]}
+              />
+            </TweakSection>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>

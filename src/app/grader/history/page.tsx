@@ -40,16 +40,16 @@ export default async function GraderHistoryPage() {
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-2">
-            <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
+            <h1 className="font-serif italic text-[40px] leading-none tracking-tight text-ink">
               Raw grade sessions
             </h1>
-            <p className="max-w-2xl text-ash-300">
+            <p className="max-w-2xl text-ink-2">
               Every card you grade is saved here so you can revisit predictions and add winners to your collection.
             </p>
           </div>
           <Link
             href="/grader"
-            className="inline-flex min-h-11 items-center rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
+            className="inline-flex min-h-11 items-center rounded border border-rule px-4 py-2 text-sm font-medium text-ink hover:bg-surface-2"
           >
             Grade a card
           </Link>
@@ -57,39 +57,39 @@ export default async function GraderHistoryPage() {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="rounded border border-dashed border-ink-700 bg-ink-900 px-8 py-16 text-center ">
-          <Gauge className="mx-auto h-12 w-12 text-ash-400" />
-          <p className="mt-4 text-lg font-medium text-ash-50">No grades yet</p>
-          <p className="mt-2 text-sm text-ash-300">Upload a raw card photo to get your first AI grade estimate.</p>
+        <div className="rounded border border-dashed border-rule bg-surface px-8 py-16 text-center ">
+          <Gauge className="mx-auto h-12 w-12 text-ink-2" />
+          <p className="mt-4 text-lg font-medium text-ink">No grades yet</p>
+          <p className="mt-2 text-sm text-ink-2">Upload a raw card photo to get your first AI grade estimate.</p>
           <Link
             href="/grader"
-            className="mt-6 inline-flex min-h-11 items-center rounded bg-brand-500 px-5 py-3 text-sm font-medium text-white hover:bg-brand-400"
+            className="mt-6 inline-flex min-h-11 items-center rounded bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-ink/90"
           >
             Grade a Card
           </Link>
         </div>
       ) : (
-        <ul className="divide-y divide-ink-800 overflow-hidden rounded border border-ink-700 bg-ink-900 ">
+        <ul className="divide-y divide-rule-soft overflow-hidden rounded border border-rule bg-surface ">
           {sessions.map((session) => (
             <li key={session.sessionId}>
               <Link
                 href={`/grader?session=${session.sessionId}` as Route}
-                className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-ink-800 sm:flex-row sm:items-center"
+                className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-surface-2 sm:flex-row sm:items-center"
               >
-                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-ink-800">
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-surface-2">
                   {session.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={session.imageUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-ash-500">No image</div>
+                    <div className="flex h-full items-center justify-center text-xs text-ink-3">No image</div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-ash-500">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-3">
                     {formatSessionDate(session.createdAt)}
                     {session.savedToCollection ? ' · Saved' : ''}
                   </p>
-                  <p className="font-medium text-ash-50">
+                  <p className="font-medium text-ink">
                     PSA {formatGrade(session.psaPrediction ?? session.predictedGrade)}
                     {session.confidence ? ` · ${session.confidence} confidence` : ''}
                   </p>

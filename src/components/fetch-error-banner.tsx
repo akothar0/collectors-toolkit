@@ -1,20 +1,11 @@
 'use client';
 
-export function FetchErrorBanner({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+export function FetchErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-rose-800 bg-rose-950 px-4 py-3 text-sm text-rose-400">
-      <p>{message}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="min-h-9 rounded border border-rose-800 px-4 py-1.5 text-sm font-medium text-rose-400 hover:border-rose-700 hover:text-rose-300"
-      >
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-negative/30 bg-negative/5 px-4 py-3">
+      <p className="text-[13px] text-negative">{message}</p>
+      <button type="button" onClick={onRetry}
+        className="rounded border border-negative/30 px-3 py-1.5 font-mono text-[11px] text-negative hover:bg-negative/10">
         Retry
       </button>
     </div>
