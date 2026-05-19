@@ -30,13 +30,13 @@ export default async function ScannerHistoryDetailPage({ params }: PageProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/scanner/history"
-          className="text-sm font-medium text-brand-600 hover:underline"
+          className="text-sm font-medium text-brand-500 hover:underline"
         >
           Back to history
         </Link>
         <Link
           href="/scanner"
-          className="inline-flex rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
         >
           New scan
         </Link>

@@ -35,12 +35,12 @@ function StatCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className={`mt-3 text-2xl font-semibold tracking-tight md:text-3xl ${valueClassName ?? 'text-slate-950'}`}>
+    <div className="rounded border border-ink-700 bg-ink-900 p-5 ">
+      <p className="text-sm font-medium text-ash-400">{label}</p>
+      <p className={`mt-3 text-2xl font-semibold tracking-tight md:text-3xl ${valueClassName ?? 'text-ash-50'}`}>
         {value}
       </p>
-      {subValue ? <p className="mt-1 text-sm text-slate-500">{subValue}</p> : null}
+      {subValue ? <p className="mt-1 text-sm text-ash-400">{subValue}</p> : null}
     </div>
   );
 }
@@ -48,24 +48,24 @@ function StatCard({
 function PortfolioSkeleton() {
   return (
     <section className="space-y-8">
-      <div className="h-32 animate-pulse rounded-3xl bg-slate-100" />
+      <div className="h-32 skeleton rounded" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          <div key={index} className="h-28 skeleton rounded" />
         ))}
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-[1.75rem] bg-slate-100" />
-        <div className="h-64 animate-pulse rounded-[1.75rem] bg-slate-100" />
+        <div className="h-64 skeleton rounded" />
+        <div className="h-64 skeleton rounded" />
       </div>
     </section>
   );
 }
 
 function gainClassName(gain: number) {
-  if (gain > 0) return 'text-emerald-600';
-  if (gain < 0) return 'text-rose-600';
-  return 'text-slate-500';
+  if (gain > 0) return 'text-emerald-400';
+  if (gain < 0) return 'text-rose-400';
+  return 'text-ash-400';
 }
 
 export default function PortfolioPage() {
@@ -109,15 +109,15 @@ export default function PortfolioPage() {
     return (
       <section className="space-y-8">
         <PortfolioHeader />
-        <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white px-8 py-16 text-center shadow-soft">
-          <ChartColumnIncreasing className="mx-auto h-12 w-12 text-slate-300" />
-          <p className="mt-4 text-lg font-medium text-slate-950">Add cards to see your portfolio stats</p>
-          <p className="mt-2 text-sm text-slate-600">
+        <div className="rounded border border-dashed border-ink-700 bg-ink-900 px-8 py-16 text-center ">
+          <ChartColumnIncreasing className="mx-auto h-12 w-12 text-ash-400" />
+          <p className="mt-4 text-lg font-medium text-ash-50">Add cards to see your portfolio stats</p>
+          <p className="mt-2 text-sm text-ash-300">
             Track purchase price and current value on collection cards to unlock cost basis and gain/loss.
           </p>
           <Link
             href={'/collection/add' as Route}
-            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded bg-brand-500 px-5 py-3 text-sm font-medium text-white hover:bg-brand-400"
           >
             <Plus className="h-4 w-4" />
             Add Card
@@ -159,8 +159,8 @@ export default function PortfolioPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="overflow-x-auto rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-950">By Sport</h2>
+        <div className="overflow-x-auto rounded border border-ink-700 bg-ink-900 p-5 ">
+          <h2 className="text-base font-semibold text-ash-50">By Sport</h2>
           <div className="mt-4 h-64 min-w-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sportChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
@@ -174,8 +174,8 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-950">By Grade</h2>
+        <div className="overflow-x-auto rounded border border-ink-700 bg-ink-900 p-5 ">
+          <h2 className="text-base font-semibold text-ash-50">By Grade</h2>
           <div className="mt-4 h-64 min-w-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={gradeChartData} margin={{ bottom: 8 }}>
@@ -194,15 +194,15 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-        <h2 className="text-base font-semibold text-slate-950">By Grading Company</h2>
-        <ul className="mt-4 divide-y divide-slate-100">
+      <div className="rounded border border-ink-700 bg-ink-900 p-5 ">
+        <h2 className="text-base font-semibold text-ash-50">By Grading Company</h2>
+        <ul className="mt-4 divide-y divide-ink-800">
           {data.byCompany.map((row) => {
             const pct = data.totalCards > 0 ? Math.round((row.count / data.totalCards) * 100) : 0;
             return (
               <li key={row.company} className="flex items-center justify-between gap-4 py-3 text-sm">
-                <span className="font-medium text-slate-950">{row.company}</span>
-                <span className="text-slate-600">
+                <span className="font-medium text-ash-50">{row.company}</span>
+                <span className="text-ash-300">
                   {row.count} · {pct}%
                 </span>
               </li>
@@ -212,18 +212,18 @@ export default function PortfolioPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-950">Most Valuable</h2>
-          <ul className="mt-4 divide-y divide-slate-100">
+        <div className="rounded border border-ink-700 bg-ink-900 p-5 ">
+          <h2 className="text-base font-semibold text-ash-50">Most Valuable</h2>
+          <ul className="mt-4 divide-y divide-ink-800">
             {data.topCards.map((card) => (
               <li key={card.id} className="flex items-center justify-between gap-4 py-3 text-sm">
                 <div>
-                  <p className="font-medium text-slate-950">{card.player}</p>
-                  <p className="text-slate-500">
+                  <p className="font-medium text-ash-50">{card.player}</p>
+                  <p className="text-ash-400">
                     {formatGradeBadge(card.grade != null ? 'graded' : 'raw', card.grade, null)}
                   </p>
                 </div>
-                <span className="font-medium text-slate-950">
+                <span className="font-medium text-ash-50">
                   {formatPrice(card.displayValue) ?? '—'}
                   {card.valueLabel ? ` ${card.valueLabel}` : ''}
                 </span>
@@ -232,18 +232,18 @@ export default function PortfolioPage() {
           </ul>
         </div>
 
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-950">Recent Additions</h2>
-          <ul className="mt-4 divide-y divide-slate-100">
+        <div className="rounded border border-ink-700 bg-ink-900 p-5 ">
+          <h2 className="text-base font-semibold text-ash-50">Recent Additions</h2>
+          <ul className="mt-4 divide-y divide-ink-800">
             {data.recentCards.map((card) => (
               <li key={card.id} className="flex items-center justify-between gap-4 py-3 text-sm">
                 <div>
-                  <p className="font-medium text-slate-950">{card.player}</p>
-                  <p className="text-slate-500">
+                  <p className="font-medium text-ash-50">{card.player}</p>
+                  <p className="text-ash-400">
                     {formatGradeBadge(card.grade != null ? 'graded' : 'raw', card.grade, null)}
                   </p>
                 </div>
-                <span className="text-slate-600">{formatDateLabel(card.createdAt)}</span>
+                <span className="text-ash-300">{formatDateLabel(card.createdAt)}</span>
               </li>
             ))}
           </ul>
@@ -256,11 +256,11 @@ export default function PortfolioPage() {
 function PortfolioHeader() {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-600">Portfolio</p>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Portfolio</p>
+      <h1 className="text-3xl font-semibold tracking-tight text-ash-50 md:text-4xl">
         Collection value
       </h1>
-      <p className="max-w-2xl text-base leading-7 text-slate-600">
+      <p className="max-w-2xl text-base leading-7 text-ash-300">
         Cost basis, current value, and breakdowns across your owned cards.
       </p>
     </div>

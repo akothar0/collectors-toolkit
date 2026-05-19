@@ -5,7 +5,7 @@ import { formatPrice } from '@/lib/collection-presenter';
 import { fetchPortfolioSummary } from '@/lib/portfolio-server';
 import { getOrCreateUserId } from '@/lib/users';
 
-type AppRoute = '/' | '/scanner' | '/grader' | '/collection' | '/portfolio' | '/import';
+type AppRoute = '/' | '/scanner' | '/grader' | '/collection' | '/wantlist' | '/portfolio' | '/import' | '/sets';
 
 function StatCard({
   label,
@@ -15,9 +15,9 @@ function StatCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
+    <div className="rounded border border-ink-700 bg-ink-900 p-5">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">{label}</p>
+      <p className="mt-3 tabular-nums text-3xl font-semibold tracking-tight text-ash-50">{value}</p>
     </div>
   );
 }
@@ -34,10 +34,10 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_10px_30px_rgba(79,70,229,0.12)]"
+      className="rounded border border-ink-700 bg-ink-900 p-5 hover:border-ink-600 hover:bg-ink-800"
     >
-      <div className="text-base font-semibold text-slate-950">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <div className="text-sm font-semibold text-ash-50">{title}</div>
+      <p className="mt-2 text-sm leading-6 text-ash-400">{description}</p>
     </Link>
   );
 }
@@ -48,46 +48,33 @@ export default async function Page() {
   if (!clerkReady) {
     return (
       <section className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="space-y-4">
-            <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-5xl font-semibold tracking-tight text-slate-950 md:text-6xl">
+            <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ash-50 md:text-6xl">
               Scan. Grade. Track.
             </h1>
-            <p className="max-w-2xl text-lg leading-8 text-slate-600">
-              Identify graded slabs, estimate raw card condition, and keep your collection organized in one place.
+            <p className="max-w-xl text-lg leading-8 text-ash-300">
+              Scan slabs. Estimate raw cards. Own your collection.
             </p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              'Graded card scanner with cert lookup',
-              'AI raw card grader with sub-grades',
-              'Collection, portfolio, and import workflows',
-            ].map((item) => (
-              <div key={item} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-soft">
-                {item}
-              </div>
-            ))}
-          </div>
-
           <HomeActions authReady={false} />
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft">
-          <div className="rounded-[1.5rem] bg-slate-950 p-6 text-white">
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-slate-300">Collectors Toolkit</p>
+        <div className="rounded border border-ink-700 bg-ink-900 p-6">
+          <div className="rounded bg-ink-800 border border-ink-700 p-6">
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-ash-500">Collectors Toolkit</p>
             <div className="mt-5 space-y-3">
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Scanner</p>
-                <p className="mt-1 text-lg font-semibold">Cert lookup from a slab photo</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Scanner</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">Cert lookup from a slab photo</p>
               </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Grader</p>
-                <p className="mt-1 text-lg font-semibold">PSA-style estimate with sub-grades</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Grader</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">PSA-style estimate with sub-grades</p>
               </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Collection</p>
-                <p className="mt-1 text-lg font-semibold">Track owned, sold, and want-list cards</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Collection</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">Track owned, sold, and want-list cards</p>
               </div>
             </div>
           </div>
@@ -101,46 +88,33 @@ export default async function Page() {
   if (!userId) {
     return (
       <section className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="space-y-4">
-            <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-5xl font-semibold tracking-tight text-slate-950 md:text-6xl">
+            <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ash-50 md:text-6xl">
               Scan. Grade. Track.
             </h1>
-            <p className="max-w-2xl text-lg leading-8 text-slate-600">
-              Identify graded slabs, estimate raw card condition, and keep your collection organized in one place.
+            <p className="max-w-xl text-lg leading-8 text-ash-300">
+              Scan slabs. Estimate raw cards. Own your collection.
             </p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              'Graded card scanner with cert lookup',
-              'AI raw card grader with sub-grades',
-              'Collection, portfolio, and import workflows',
-            ].map((item) => (
-              <div key={item} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-soft">
-                {item}
-              </div>
-            ))}
-          </div>
-
           <HomeActions authReady />
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft">
-          <div className="rounded-[1.5rem] bg-slate-950 p-6 text-white">
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-slate-300">Collectors Toolkit</p>
+        <div className="rounded border border-ink-700 bg-ink-900 p-6">
+          <div className="rounded bg-ink-800 border border-ink-700 p-6">
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-ash-500">Collectors Toolkit</p>
             <div className="mt-5 space-y-3">
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Scanner</p>
-                <p className="mt-1 text-lg font-semibold">Cert lookup from a slab photo</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Scanner</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">Cert lookup from a slab photo</p>
               </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Grader</p>
-                <p className="mt-1 text-lg font-semibold">PSA-style estimate with sub-grades</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Grader</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">PSA-style estimate with sub-grades</p>
               </div>
-              <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                <p className="text-sm text-slate-300">Collection</p>
-                <p className="mt-1 text-lg font-semibold">Track owned, sold, and want-list cards</p>
+              <div className="rounded border border-ink-700 bg-ink-900 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Collection</p>
+                <p className="mt-1 text-sm font-medium text-ash-100">Track owned, sold, and want-list cards</p>
               </div>
             </div>
           </div>
@@ -152,49 +126,53 @@ export default async function Page() {
   const clerkUser = await currentUser();
   const email = clerkUser?.emailAddresses[0]?.emailAddress ?? null;
   let stats = {
-    totalCards: '0',
-    totalValue: '$0',
-    scans: '0',
-    gradeSessions: '0',
+    totalCards: 0,
+    totalCurrentValue: 0,
+    totalCostBasis: 0,
+    unrealizedGain: 0,
   };
 
   try {
-    const supabaseUserId = await getOrCreateUserId(userId, email);
-    const portfolio = await fetchPortfolioSummary(supabaseUserId);
+    const dbUserId = await getOrCreateUserId(userId, email ?? '');
+    const summary = await fetchPortfolioSummary(dbUserId);
     stats = {
-      totalCards: String(portfolio.totalCards),
-      totalValue: formatPrice(portfolio.totalCurrentValue) ?? '$0',
-      scans: String(portfolio.scanCount),
-      gradeSessions: String(portfolio.gradeSessionCount),
+      totalCards: summary.totalCards,
+      totalCurrentValue: summary.totalCurrentValue,
+      totalCostBasis: summary.totalCostBasis,
+      unrealizedGain: summary.unrealizedGain,
     };
   } catch {
-    // Keep zero defaults if portfolio fetch fails.
+    // Dashboard still renders with zero stats if DB is unavailable.
   }
+
+  const gainLossLabel = stats.unrealizedGain >= 0 ? `+${formatPrice(stats.unrealizedGain)}` : formatPrice(stats.unrealizedGain);
 
   return (
     <section className="space-y-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-600">Dashboard</p>
-        <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-          Your collection overview
+      <div className="space-y-1">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Dashboard</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-ash-50 md:text-4xl">
+          Your collection
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-          Scans, grades, imports, and collection entries roll up here as you use the toolkit.
-        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Cards" value={stats.totalCards} />
-        <StatCard label="Total Value" value={stats.totalValue} />
-        <StatCard label="Scans" value={stats.scans} />
-        <StatCard label="Grade Sessions" value={stats.gradeSessions} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Cards" value={String(stats.totalCards)} />
+        <StatCard label="Portfolio value" value={formatPrice(stats.totalCurrentValue) ?? '—'} />
+        <StatCard label="Total cost" value={formatPrice(stats.totalCostBasis) ?? '—'} />
+        <StatCard label="Gain / Loss" value={gainLossLabel ?? '—'} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <QuickAction href="/scanner" title="Scan a Slab" description="Open the cert lookup flow for graded cards." />
-        <QuickAction href="/grader" title="Grade a Card" description="Estimate a raw card's condition and submission value." />
-        <QuickAction href="/collection" title="Add to Collection" description="Start tracking a card you own or just bought." />
-        <QuickAction href="/import" title="Import Purchases" description="Parse eBay, Fanatics, or pasted purchase data." />
+      <div>
+        <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Quick actions</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <QuickAction href="/scanner" title="Scan a Slab" description="Photograph a graded slab and pull cert data." />
+          <QuickAction href="/grader" title="Grade a Card" description="Estimate PSA, BGS, and CGC grades from photos." />
+          <QuickAction href="/collection" title="Collection" description="Browse and manage your cards." />
+          <QuickAction href="/portfolio" title="Portfolio" description="Track value, cost, and gain/loss over time." />
+          <QuickAction href="/wantlist" title="Want List" description="Cards you're hunting — mark them found." />
+          <QuickAction href="/import" title="Import" description="Bulk-import from eBay or Fanatics." />
+        </div>
       </div>
     </section>
   );

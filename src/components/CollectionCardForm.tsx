@@ -88,7 +88,7 @@ export function CollectionCardForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">
           Card identity
         </legend>
         <PlayerAutocomplete
@@ -101,7 +101,7 @@ export function CollectionCardForm({
           required
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-ash-200">
             Year
             <input
               type="number"
@@ -109,47 +109,47 @@ export function CollectionCardForm({
               max={2030}
               value={values.year}
               onChange={(e) => update('year', e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
             />
           </label>
           <ButtonGroup label="Sport" options={SPORTS} value={values.sport} onChange={(sport) => update('sport', sport)} />
         </div>
       </fieldset>
 
-      <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" open>
-        <summary className="cursor-pointer text-sm font-semibold text-slate-800">Set details (optional)</summary>
+      <details className="rounded border border-ink-700 bg-ink-800/50 p-4" open>
+        <summary className="cursor-pointer text-sm font-semibold text-ash-200">Set details (optional)</summary>
         <div className="mt-4 space-y-4">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-ash-200">
             Set name
             <input
               type="text"
               value={values.setName}
               onChange={(e) => update('setName', e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
             />
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Card number
               <input
                 type="text"
                 value={values.cardNumber}
                 onChange={(e) => update('cardNumber', e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Parallel
               <input
                 type="text"
                 value={values.parallel}
                 onChange={(e) => update('parallel', e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
           </div>
           <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-ash-200">
               <input
                 type="checkbox"
                 checked={values.isRookie}
@@ -157,7 +157,7 @@ export function CollectionCardForm({
               />
               Rookie card
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-ash-200">
               <input
                 type="checkbox"
                 checked={values.isAutograph}
@@ -170,7 +170,7 @@ export function CollectionCardForm({
       </details>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Condition</legend>
+        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">Condition</legend>
         <ButtonGroup
           options={[
             { value: 'raw', label: 'Raw' },
@@ -180,7 +180,7 @@ export function CollectionCardForm({
           onChange={(conditionType) => update('conditionType', conditionType as 'raw' | 'graded')}
         />
         {values.conditionType === 'graded' ? (
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <div className="space-y-4 rounded border border-ink-700 bg-ink-800/50 p-4">
             <ButtonGroup
               label="Grading company"
               options={GRADING_COMPANIES}
@@ -193,47 +193,47 @@ export function CollectionCardForm({
                 value={values.gradingCompanyOther}
                 onChange={(e) => update('gradingCompanyOther', e.target.value)}
                 placeholder="Company name"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             ) : null}
             <GradeChips value={values.grade} onChange={(grade) => update('grade', grade)} />
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-ash-200">
               Cert number (optional)
               <input
                 type="text"
                 value={values.certNumber}
                 onChange={(e) => update('certNumber', e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </label>
           </div>
         ) : null}
       </fieldset>
 
-      <details className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-800">Purchase info (optional)</summary>
+      <details className="rounded border border-ink-700 bg-ink-800/50 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-ash-200">Purchase info (optional)</summary>
         <div className="mt-4 space-y-4">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-ash-200">
             Purchase price
             <div className="relative mt-2">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ash-500">$</span>
               <input
                 type="number"
                 min={0}
                 step="0.01"
                 value={values.purchasePrice}
                 onChange={(e) => update('purchasePrice', e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-8 pr-4 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded border border-ink-700 bg-ink-900 py-3 pl-8 pr-4 text-sm outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
               />
             </div>
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-ash-200">
             Date purchased
             <input
               type="date"
               value={values.purchaseDate}
               onChange={(e) => update('purchaseDate', e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
             />
           </label>
           <ButtonGroup
@@ -245,20 +245,20 @@ export function CollectionCardForm({
             value={values.purchaseSource}
             onChange={(purchaseSource) => update('purchaseSource', purchaseSource)}
           />
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-ash-200">
             Original listing URL
             <input
               type="url"
               value={values.purchaseUrl}
               onChange={(e) => update('purchaseUrl', e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+              className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
             />
           </label>
         </div>
       </details>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Photos (optional)</legend>
+        <legend className="text-sm font-semibold uppercase tracking-[0.18em] text-ash-400">Photos (optional)</legend>
         <CollectionPhotoPicker
           existingPhotos={values.photos}
           pendingPhotos={pendingPhotos}
@@ -291,24 +291,24 @@ export function CollectionCardForm({
         />
       </fieldset>
 
-      <label className="block text-sm font-medium text-slate-700">
+      <label className="block text-sm font-medium text-ash-200">
         Notes (optional)
         <textarea
           value={values.notes}
           onChange={(e) => update('notes', e.target.value)}
           rows={4}
-          className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+          className="mt-2 w-full rounded border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ash-50 placeholder:text-ash-500 outline-none focus:border-brand-500/50 focus:ring-0 focus:ring-brand-500"
         />
       </label>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+      {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         {onCancel ? (
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-200 px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex flex-1 items-center justify-center rounded border border-ink-700 px-6 py-3 text-sm font-medium text-ash-200 hover:bg-ink-800"
           >
             Cancel
           </button>
@@ -316,7 +316,7 @@ export function CollectionCardForm({
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {submitLabel}

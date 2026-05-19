@@ -18,7 +18,7 @@ type EditableItem = ImportBatchItem & {
 function confidenceBadge(c: string) {
   if (c === 'high') return 'bg-emerald-100 text-emerald-700';
   if (c === 'medium') return 'bg-amber-100 text-amber-700';
-  return 'bg-slate-100 text-slate-500';
+  return 'bg-ink-800 text-ash-400';
 }
 
 export default function ImportReviewPage({ params }: { params: Promise<{ batchId: string }> }) {
@@ -124,7 +124,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+          <div key={i} className="h-12 animate-pulse rounded bg-ink-800" />
         ))}
       </div>
     );
@@ -132,19 +132,19 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
 
   if (error && !batch) {
     return (
-      <div className="rounded-2xl bg-red-50 p-6 text-sm text-red-700">{error}</div>
+      <div className="rounded bg-red-50 p-6 text-sm text-red-700">{error}</div>
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-600">Review Import</p>
-        <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950">
+      <div className="rounded border border-ink-700 bg-ink-900 p-8 ">
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-500">Review Import</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ash-50">
           Review {batch?.totalParsed ?? 0} Cards
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-ash-400">
           {batch?.totalMatched ?? 0} automatically matched to card catalog ·{' '}
           Source: <span className="capitalize">{batch?.source.replace(/_/g, ' ')}</span>
         </p>
@@ -152,15 +152,15 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
 
       {/* Bulk actions */}
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={() => toggleAll(true)} className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50">Select all</button>
-        <button onClick={() => toggleAll(false)} className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50">Deselect all</button>
-        <button onClick={deselectLowConfidence} className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50">Deselect low confidence</button>
-        <span className="ml-auto text-sm text-slate-500">{selectedCount} selected</span>
+        <button onClick={() => toggleAll(true)} className="rounded border border-ink-700 bg-ink-900 px-4 py-1.5 text-sm text-ash-200 transition-colors hover:bg-ink-800">Select all</button>
+        <button onClick={() => toggleAll(false)} className="rounded border border-ink-700 bg-ink-900 px-4 py-1.5 text-sm text-ash-200 transition-colors hover:bg-ink-800">Deselect all</button>
+        <button onClick={deselectLowConfidence} className="rounded border border-ink-700 bg-ink-900 px-4 py-1.5 text-sm text-ash-200 transition-colors hover:bg-ink-800">Deselect low confidence</button>
+        <span className="ml-auto text-sm text-ash-400">{selectedCount} selected</span>
       </div>
 
       {/* Review list */}
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
-        <div className="hidden border-b border-slate-100 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 md:grid md:grid-cols-[28px,minmax(0,1.7fr),repeat(6,minmax(0,1fr)),74px] md:gap-3">
+      <div className="overflow-hidden rounded border border-ink-700 bg-ink-900 ">
+        <div className="hidden border-b border-ink-800 px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-ash-500 md:grid md:grid-cols-[28px,minmax(0,1.7fr),repeat(6,minmax(0,1fr)),74px] md:gap-3">
           <div />
           <div>Card title</div>
           <div>Player</div>
@@ -192,7 +192,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p
-                        className="max-w-full text-sm font-medium leading-6 text-slate-950"
+                        className="max-w-full text-sm font-medium leading-6 text-ash-50"
                         style={{
                           display: '-webkit-box',
                           WebkitBoxOrient: 'vertical',
@@ -208,7 +208,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
                       </span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ash-400">
                       {item.rawPrice != null ? <MetaChip label={`$${item.rawPrice}`} /> : null}
                       {item.parsedPlayer ? <MetaChip label={item.parsedPlayer} /> : null}
                       {item.parsedYear != null ? <MetaChip label={String(item.parsedYear)} /> : null}
@@ -244,7 +244,7 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
                   <button
                     type="button"
                     onClick={() => updateItem(item.id, 'selected', !item.selected)}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                    className="rounded border border-ink-700 bg-ink-900 px-3 py-1.5 text-xs font-medium text-ash-300 transition-colors hover:bg-ink-800"
                   >
                     {item.selected ? 'Selected' : 'Skipped'}
                   </button>
@@ -256,13 +256,13 @@ export default function ImportReviewPage({ params }: { params: Promise<{ batchId
       </div>
 
       {/* Save bar */}
-      <div className="sticky bottom-4 flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-lg">
+      <div className="sticky bottom-4 flex items-center gap-4 rounded border border-ink-700 bg-ink-900 px-6 py-4 shadow-lg">
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <span className="mr-auto text-sm text-slate-600">{selectedCount} cards will be added to your collection</span>
+        <span className="mr-auto text-sm text-ash-300">{selectedCount} cards will be added to your collection</span>
         <button
           onClick={handleSave}
           disabled={saving || selectedCount === 0}
-          className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+          className="rounded bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-400 disabled:opacity-50"
         >
           {saving ? 'Saving…' : `Add ${selectedCount} Card${selectedCount === 1 ? '' : 's'} to Collection`}
         </button>
@@ -278,7 +278,7 @@ function InlineInput({ value, onChange, placeholder }: { value: string; onChange
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full min-w-[60px] cursor-text rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-200"
+      className="w-full min-w-[60px] cursor-text rounded-lg border border-ink-700 bg-ink-800 px-1 py-0.5 text-sm text-ash-200 placeholder:text-ash-500 hover:border-ink-600 hover:bg-ink-900 focus:border-brand-300 focus:bg-ink-900 focus:outline-none focus:ring-1 focus:ring-brand-200"
     />
   );
 }
@@ -294,7 +294,7 @@ function Field({
 }) {
   return (
     <label className={`space-y-1.5 ${className}`}>
-      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</span>
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-ash-500">{label}</span>
       {children}
     </label>
   );
@@ -302,7 +302,7 @@ function Field({
 
 function MetaChip({ label }: { label: string }) {
   return (
-    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+    <span className="rounded-full bg-ink-800 px-2.5 py-1 font-medium text-ash-300">
       {label}
     </span>
   );

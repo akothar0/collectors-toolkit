@@ -47,7 +47,7 @@ export function CollectionPhotoCarousel({ photos, alt }: CollectionPhotoCarousel
 
   if (photos.length === 0) {
     return (
-      <div className="flex aspect-[3/4] items-center justify-center text-slate-300">
+      <div className="flex aspect-[3/4] items-center justify-center text-ash-400">
         <CreditCard className="h-16 w-16" />
       </div>
     );
@@ -58,7 +58,7 @@ export function CollectionPhotoCarousel({ photos, alt }: CollectionPhotoCarousel
   return (
     <div className="space-y-4">
       <div
-        className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 shadow-soft"
+        className="relative overflow-hidden rounded border border-ink-700 bg-ink-800 "
         onPointerDown={(event) => {
           swipeStartX.current = event.clientX;
         }}
@@ -75,7 +75,7 @@ export function CollectionPhotoCarousel({ photos, alt }: CollectionPhotoCarousel
             <button
               type="button"
               onClick={() => goTo(activeIndex - 1)}
-              className="absolute left-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-sm transition hover:bg-white"
+              className="absolute left-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink-900/90 text-ash-100 shadow-sm transition hover:bg-ink-900"
               aria-label="Previous photo"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -83,12 +83,12 @@ export function CollectionPhotoCarousel({ photos, alt }: CollectionPhotoCarousel
             <button
               type="button"
               onClick={() => goTo(activeIndex + 1)}
-              className="absolute right-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-sm transition hover:bg-white"
+              className="absolute right-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink-900/90 text-ash-100 shadow-sm transition hover:bg-ink-900"
               aria-label="Next photo"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
-            <div className="absolute bottom-4 right-4 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-semibold text-white">
+            <div className="absolute bottom-4 right-4 rounded-full bg-ink-950/80 px-3 py-1 text-xs font-semibold text-white">
               {activeIndex + 1} / {photos.length}
             </div>
           </>
@@ -102,10 +102,10 @@ export function CollectionPhotoCarousel({ photos, alt }: CollectionPhotoCarousel
               key={photo.id}
               type="button"
               onClick={() => goTo(index)}
-              className={`overflow-hidden rounded-xl border transition ${
+              className={`overflow-hidden rounded border transition ${
                 index === activeIndex
                   ? 'border-brand-500 ring-2 ring-brand-200'
-                  : 'border-slate-200'
+                  : 'border-ink-700'
               }`}
               aria-label={`Show photo ${index + 1}`}
             >

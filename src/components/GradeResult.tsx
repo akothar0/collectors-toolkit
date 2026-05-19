@@ -3,7 +3,6 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { RotateCcw } from 'lucide-react';
 import type { GradeResult as GradeResultData, GradingCompanyPrediction } from '@/lib/grader';
 
 type GradeResultProps = {
@@ -12,19 +11,19 @@ type GradeResultProps = {
 };
 
 function gradeColorClass(grade: number) {
-  if (grade >= 9.5) return 'text-amber-600 bg-amber-50 border-amber-200';
-  if (grade >= 9) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
-  if (grade >= 8) return 'text-blue-600 bg-blue-50 border-blue-200';
-  if (grade >= 7) return 'text-slate-600 bg-slate-100 border-slate-200';
-  return 'text-slate-500 bg-slate-50 border-slate-200';
+  if (grade >= 9.5) return 'text-amber-400 border-amber-700 bg-amber-950';
+  if (grade >= 9) return 'text-emerald-400 border-emerald-700 bg-emerald-950';
+  if (grade >= 8) return 'text-brand-400 border-brand-700 bg-brand-900/30';
+  if (grade >= 7) return 'text-ash-300 border-ink-600 bg-ink-800';
+  return 'text-ash-400 border-ink-700 bg-ink-900';
 }
 
 function barColorClass(grade: number) {
   if (grade >= 9.5) return 'bg-amber-500';
   if (grade >= 9) return 'bg-emerald-500';
-  if (grade >= 8) return 'bg-blue-500';
-  if (grade >= 7) return 'bg-slate-500';
-  return 'bg-slate-400';
+  if (grade >= 8) return 'bg-brand-500';
+  if (grade >= 7) return 'bg-ash-400';
+  return 'bg-ash-500';
 }
 
 function confidenceLabel(confidence: GradeResultData['confidence']) {
@@ -75,21 +74,17 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
   ].filter((url): url is string => Boolean(url));
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-soft">
-      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 md:px-8">
+    <section className="overflow-hidden rounded border border-ink-700 bg-ink-900">
+      <div className="flex items-center justify-between border-b border-ink-700 px-6 py-4 md:px-8">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Grade result</p>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-slate-950">
-            AI grade estimate
-          </h2>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">AI Grade Estimate</p>
         </div>
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="text-sm font-medium text-brand-500 hover:text-brand-400 hover:underline underline-offset-4"
         >
-          <RotateCcw className="h-4 w-4" />
-          Reset
+          Grade another →
         </button>
       </div>
 
@@ -99,7 +94,7 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             {thumbnails.map((url, index) => (
               <div
                 key={`${url}-${index}`}
-                className="h-20 w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+                className="h-20 w-14 overflow-hidden rounded border border-ink-700 bg-ink-800"
               >
                 <img src={url} alt={index === 0 ? 'Front' : 'Back'} className="h-full w-full object-cover" />
               </div>
@@ -107,24 +102,24 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
           </div>
         ) : null}
 
-        <div className="flex flex-col items-center py-4">
+        {/* Hero: grade circle */}
+        <div className="flex flex-col items-center py-6">
           <div
-            className={`flex h-32 w-32 items-center justify-center rounded-full border-4 text-5xl font-semibold tracking-tight ${badgeColors}`}
+            className={`flex h-36 w-36 items-center justify-center rounded-full border-4 tabular-nums text-6xl font-bold tracking-tight ${badgeColors}`}
           >
             {result.overallGrade.toFixed(1)}
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-600">
+          <p className="mt-4 text-sm text-ash-400">
             {confidenceLabel(result.confidence)}
-            {result.confidence === 'low' ? ' ⚠️' : ''}
+            {result.confidence === 'low' ? ' — low photo quality' : ''}
           </p>
         </div>
 
         {result.confidence === 'low' ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
-            <p className="font-semibold">Photo quality may limit accuracy</p>
-            <p className="mt-1">
+          <div className="rounded border border-amber-800 bg-amber-950 p-4 text-sm text-amber-400">
+            <p className="font-medium">Low accuracy</p>
+            <p className="mt-1 leading-6 text-amber-500">
               Retake with the card flat, perpendicular to the camera, even lighting, and all four corners visible.
-              Add a back photo and raking-light surface close-up for better results.
             </p>
           </div>
         ) : null}
@@ -136,13 +131,13 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             return (
               <div key={key} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-700">{label}</span>
-                  <span className="font-semibold text-slate-950">{score.toFixed(1)}/10</span>
+                  <span className="text-ash-300">{label}</span>
+                  <span className="tabular-nums font-semibold text-ash-100">{score.toFixed(1)}/10</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
                   <div
-                    className={`h-full rounded-full transition-all ${barColorClass(score)}`}
-                    style={{ width: `${pct}%` }}
+                    className={`h-full rounded-full ${barColorClass(score)}`}
+                    style={{ width: `${pct}%`, transition: 'width 400ms ease-out' }}
                   />
                 </div>
               </div>
@@ -156,65 +151,64 @@ export function GradeResult({ result, onReset }: GradeResultProps) {
             return (
               <div
                 key={key}
-                className={`rounded-2xl border p-4 text-center ${
+                className={`rounded border p-4 text-center ${
                   isRecommended
-                    ? 'border-brand-400 bg-brand-50 shadow-sm ring-2 ring-brand-200'
-                    : 'border-slate-200 bg-slate-50'
+                    ? 'border-brand-500/40 bg-brand-900/20'
+                    : 'border-ink-700 bg-ink-800'
                 }`}
               >
                 {isRecommended ? (
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-brand-500">
                     Recommended
                   </p>
                 ) : null}
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{format(value(result))}</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">{label}</p>
+                <p className="mt-2 tabular-nums text-2xl font-semibold tracking-tight text-ash-50">{format(value(result))}</p>
               </div>
             );
           })}
         </div>
 
         {result.conditionNotes ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Condition notes</p>
-            <p className="mt-3 text-sm leading-7 text-slate-700">{result.conditionNotes}</p>
+          <div className="rounded border border-ink-700 bg-ink-800 p-5">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ash-500">Condition notes</p>
+            <p className="mt-3 text-sm leading-7 text-ash-300">{result.conditionNotes}</p>
           </div>
         ) : null}
 
         <div
-          className={`rounded-2xl border p-5 ${
+          className={`rounded border p-5 ${
             result.submissionRecommended
-              ? 'border-emerald-200 bg-emerald-50'
-              : 'border-slate-200 bg-slate-50'
+              ? 'border-emerald-800 bg-emerald-950'
+              : 'border-ink-700 bg-ink-800'
           }`}
         >
           <p
-            className={`text-xs font-semibold uppercase tracking-[0.18em] ${
-              result.submissionRecommended ? 'text-emerald-700' : 'text-slate-500'
+            className={`text-xs font-medium uppercase tracking-[0.18em] ${
+              result.submissionRecommended ? 'text-emerald-400' : 'text-ash-500'
             }`}
           >
-            {result.submissionRecommended ? 'Submission recommended' : 'Submission not recommended'}
+            {result.submissionRecommended ? 'Submit recommended' : 'Skip submission'}
           </p>
           {result.submissionRoiNotes ? (
-            <p className="mt-3 text-sm leading-7 text-slate-700">{result.submissionRoiNotes}</p>
+            <p className="mt-3 text-sm leading-7 text-ash-300">{result.submissionRoiNotes}</p>
           ) : null}
-          <p className="mt-3 text-xs text-slate-500">PSA Economy ~$25 · BGS ~$30 · CGC ~$20</p>
+          <p className="mt-3 text-xs text-ash-500">PSA Economy ~$25 · BGS ~$30 · CGC ~$20</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href={collectionHref as Route}
-            className="inline-flex flex-1 items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+            className="inline-flex h-11 flex-1 items-center justify-center rounded bg-brand-500 px-6 text-sm font-semibold text-white hover:bg-brand-400"
           >
             Add to Collection
           </Link>
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex h-11 flex-1 items-center justify-center rounded border border-ink-600 px-6 text-sm font-medium text-ash-300 hover:border-ink-500 hover:text-ash-50"
           >
-            <RotateCcw className="h-4 w-4" />
-            Grade Another Card
+            Grade another
           </button>
         </div>
       </div>

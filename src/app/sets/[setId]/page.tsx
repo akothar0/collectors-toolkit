@@ -89,11 +89,11 @@ export default function SetDetailPage() {
   if (loading) {
     return (
       <section className="space-y-6">
-        <div className="h-24 animate-pulse rounded-3xl bg-slate-100" />
-        <div className="h-4 animate-pulse rounded-full bg-slate-100" />
+        <div className="h-24 animate-pulse rounded bg-ink-800" />
+        <div className="h-4 animate-pulse rounded-full bg-ink-800" />
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
           {Array.from({ length: 24 }).map((_, index) => (
-            <div key={index} className="aspect-square animate-pulse rounded-lg bg-slate-100" />
+            <div key={index} className="aspect-square animate-pulse rounded-lg bg-ink-800" />
           ))}
         </div>
       </section>
@@ -103,7 +103,7 @@ export default function SetDetailPage() {
   if (error && !data) {
     return (
       <section className="space-y-6">
-        <Link href={'/sets' as Route} className="text-sm text-brand-600 hover:underline">
+        <Link href={'/sets' as Route} className="text-sm text-brand-500 hover:underline">
           ← All sets
         </Link>
         <FetchErrorBanner message={error} onRetry={() => void load()} />
@@ -117,23 +117,23 @@ export default function SetDetailPage() {
 
   return (
     <section className="space-y-8">
-      <Link href={'/sets' as Route} className="text-sm text-brand-600 hover:underline">
+      <Link href={'/sets' as Route} className="text-sm text-brand-500 hover:underline">
         ← All sets
       </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950">
+          <h1 className="text-3xl font-semibold tracking-tight text-ash-50">
             {data.set.name}
           </h1>
           {data.set.year ? (
-            <p className="mt-1 text-lg text-slate-600">{data.set.year}</p>
+            <p className="mt-1 text-lg text-ash-300">{data.set.year}</p>
           ) : null}
         </div>
         <button
           type="button"
           onClick={() => void shareProgress()}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
         >
           <Share2 className="h-4 w-4" />
           {copied ? 'Copied!' : 'Share Progress'}
@@ -153,7 +153,7 @@ export default function SetDetailPage() {
           type="button"
           onClick={() => setFilter('all')}
           className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium ${
-            filter === 'all' ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-700'
+            filter === 'all' ? 'bg-ink-900 text-white' : 'border border-ink-700 text-ash-200'
           }`}
         >
           Show all
@@ -163,8 +163,8 @@ export default function SetDetailPage() {
           onClick={() => setFilter('missing')}
           className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium ${
             filter === 'missing'
-              ? 'bg-slate-900 text-white'
-              : 'border border-slate-200 text-slate-700'
+              ? 'bg-ink-900 text-white'
+              : 'border border-ink-700 text-ash-200'
           }`}
         >
           Show missing only
@@ -181,7 +181,7 @@ export default function SetDetailPage() {
             className={`flex aspect-square items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${
               slot.owned
                 ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'
+                : 'border-ink-700 bg-ink-800 text-ash-400 hover:border-ink-600'
             }`}
           >
             {slot.number}

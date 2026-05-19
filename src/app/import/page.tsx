@@ -130,37 +130,37 @@ function ImportPageInner() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-600">Import</p>
-        <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+      <div className="rounded border border-ink-700 bg-ink-900 p-8 ">
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-brand-500">Import</p>
+        <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-ash-50 md:text-4xl">
           Import Purchases
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-          Bulk import cards from eBay and Fanatics into your collection. Review every row before saving.
+        <p className="mt-4 max-w-2xl text-base leading-7 text-ash-300">
+          Import from eBay or Fanatics. Review before saving.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="rounded-3xl border border-slate-200 bg-white shadow-soft">
-        <div className="flex gap-1 border-b border-slate-200 px-6 pt-4">
+      <div className="rounded border border-ink-700 bg-ink-900 ">
+        <div className="flex gap-1 border-b border-ink-700 px-6 pt-4">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setFiles([]); setError(''); }}
               className={`relative flex items-center gap-2 rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-slate-50 text-slate-950 shadow-[0_1px_0_#f8fafc]'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-ink-800 text-ash-50 shadow-[0_1px_0_#f8fafc]'
+                  : 'text-ash-400 hover:text-ash-200'
               }`}
             >
               {tab.label}
               {tab.badge && (
-                <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                <span className="rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                   {tab.badge}
                 </span>
               )}
               {activeTab === tab.id && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-600" />
+                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded bg-brand-500" />
               )}
             </button>
           ))}
@@ -170,11 +170,11 @@ function ImportPageInner() {
           {/* eBay Screenshots */}
           {activeTab === 'ebay_screenshot' && (
             <div className="space-y-5">
-              <ol className="space-y-2 text-sm text-slate-600">
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>Go to <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">ebay.com/mye/myebay/purchase</a></li>
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>Scroll through your purchases — each purchase shows the full card title</li>
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>Take screenshots (Cmd+Shift+4 on Mac, Print Screen on Windows)</li>
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">4</span>Upload all screenshots below — multiple at once</li>
+              <ol className="space-y-2 text-sm text-ash-300">
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">1</span>Go to <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-500 underline underline-offset-2">ebay.com/mye/myebay/purchase</a></li>
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">2</span>Scroll through your purchases — each purchase shows the full card title</li>
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">3</span>Take screenshots (Cmd+Shift+4 on Mac, Print Screen on Windows)</li>
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">4</span>Upload all screenshots below — multiple at once</li>
               </ol>
               <FileDropzone accept={accept} multiple files={files} onChange={setFiles} label={`${fileLabel}s`} />
             </div>
@@ -184,25 +184,25 @@ function ImportPageInner() {
           {activeTab === 'ebay_bookmarklet' && (
             <div className="space-y-5">
               {loading && bd ? (
-                <div className="text-sm text-slate-500">Processing your eBay purchases…</div>
+                <div className="text-sm text-ash-400">Processing your eBay purchases…</div>
               ) : (
                 <>
-                  <ol className="space-y-2 text-sm text-slate-600">
+                  <ol className="space-y-2 text-sm text-ash-300">
                     <li className="flex gap-3">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">1</span>
                       Open the{' '}
-                      <a href="/bookmarklet-install.html" target="_blank" rel="noreferrer" className="font-semibold text-brand-600 underline underline-offset-2">
+                      <a href="/bookmarklet-install.html" target="_blank" rel="noreferrer" className="font-semibold text-brand-500 underline underline-offset-2">
                         bookmarklet installer
                       </a>{' '}
                       and drag <strong>Import from eBay</strong> to your bookmarks bar
                     </li>
                     <li className="flex gap-3">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">2</span>
                       Or click <strong>Copy Bookmarklet</strong> below and paste the full URL into a new bookmark
                     </li>
                     <li className="flex gap-3">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>
-                      On <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">ebay.com/mye/myebay/purchase</a>, click the bookmark — you&apos;ll return here to review
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">3</span>
+                      On <a href="https://ebay.com/mye/myebay/purchase" target="_blank" rel="noreferrer" className="text-brand-500 underline underline-offset-2">ebay.com/mye/myebay/purchase</a>, click the bookmark — you&apos;ll return here to review
                     </li>
                   </ol>
 
@@ -211,7 +211,7 @@ function ImportPageInner() {
                       href="/bookmarklet-install.html"
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white no-underline transition-colors hover:bg-brand-700"
+                      className="inline-flex rounded bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white no-underline transition-colors hover:bg-brand-400"
                     >
                       Open bookmarklet installer
                     </a>
@@ -219,20 +219,20 @@ function ImportPageInner() {
                       type="button"
                       onClick={copyBookmarklet}
                       disabled={!bookmarkletCode}
-                      className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40"
+                      className="rounded border border-ink-700 bg-ink-900 px-5 py-2.5 text-sm font-semibold text-ash-200 transition-colors hover:bg-ink-800 disabled:opacity-40"
                     >
                       {copied ? '✓ Copied!' : 'Copy Bookmarklet'}
                     </button>
                   </div>
 
                   {bookmarkletPortMismatch && (
-                    <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <p className="rounded bg-amber-950 px-4 py-3 text-sm text-amber-800">
                       Re-copy or re-drag the bookmarklet from this page ({window.location.origin}).
                       An older copy may point at {bookmarkletAppUrl}.
                     </p>
                   )}
 
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-ash-500">
                     After clicking the bookmark on eBay, you&apos;ll be redirected here automatically.
                     {bookmarkletAppUrl ? ` Redirect target: ${bookmarkletAppUrl}` : ''}
                   </p>
@@ -244,10 +244,10 @@ function ImportPageInner() {
           {/* Fanatics PDFs */}
           {activeTab === 'fanatics_pdf' && (
             <div className="space-y-5">
-              <ol className="space-y-2 text-sm text-slate-600">
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">1</span>Go to <a href="https://fanaticscollect.com/activity/orders/marketplace" target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2">Fanatics Collect → Orders</a></li>
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">2</span>Click the <strong>↓</strong> download button on each order — PDFs save automatically without leaving the page</li>
-                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">3</span>Upload all downloaded PDFs below at once</li>
+              <ol className="space-y-2 text-sm text-ash-300">
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">1</span>Go to <a href="https://fanaticscollect.com/activity/orders/marketplace" target="_blank" rel="noreferrer" className="text-brand-500 underline underline-offset-2">Fanatics Collect → Orders</a></li>
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">2</span>Click the <strong>↓</strong> download button on each order — PDFs save automatically without leaving the page</li>
+                <li className="flex gap-3"><span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">3</span>Upload all downloaded PDFs below at once</li>
               </ol>
               <FileDropzone accept=".pdf" multiple files={files} onChange={setFiles} label="PDFs" />
             </div>
@@ -256,19 +256,19 @@ function ImportPageInner() {
           {/* Paste */}
           {activeTab === 'paste' && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">Paste order confirmation email text or any purchase list. Our AI will extract the card purchases.</p>
+              <p className="text-sm text-ash-300">Paste order confirmation email text or any purchase list. Our AI will extract the card purchases.</p>
               <textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 rows={10}
                 placeholder="Paste your order confirmation or purchase history text here…"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                className="w-full rounded border border-ink-700 bg-ink-800 p-4 text-sm text-ash-200 placeholder:text-ash-500 focus:border-brand-500/50 focus:outline-none focus:ring-0 focus:ring-brand-700/30"
               />
             </div>
           )}
 
           {error && (
-            <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+            <p className="mt-4 rounded bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
           )}
 
           {activeTab !== 'ebay_bookmarklet' && (
@@ -276,7 +276,7 @@ function ImportPageInner() {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                className="rounded bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-400 disabled:opacity-50"
               >
                 {loading
                   ? 'Parsing…'
@@ -311,18 +311,18 @@ function FileDropzone({
   }
 
   return (
-    <label className="group relative block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center transition-colors hover:border-brand-400 hover:bg-slate-100">
+    <label className="group relative block cursor-pointer overflow-hidden rounded border-2 border-dashed border-ink-600 bg-ink-800 p-8 text-center transition-colors hover:border-brand-500/50 hover:bg-ink-800">
       <input type="file" accept={accept} multiple={multiple} className="sr-only" onChange={handleChange} />
       {files.length > 0 ? (
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-slate-800">{files.length} {label.toLowerCase()} selected</p>
-          <p className="text-xs text-slate-500">{files.map((f) => f.name).join(', ')}</p>
-          <p className="text-xs text-brand-600">Click to change selection</p>
+          <p className="text-sm font-semibold text-ash-200">{files.length} {label.toLowerCase()} selected</p>
+          <p className="text-xs text-ash-400">{files.map((f) => f.name).join(', ')}</p>
+          <p className="text-xs text-brand-500">Click to change selection</p>
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-700">Drop {label.toLowerCase()} here or click to browse</p>
-          <p className="text-xs text-slate-400">{multiple ? 'Multiple files supported' : 'One file at a time'}</p>
+          <p className="text-sm font-semibold text-ash-200">Drop {label.toLowerCase()} here or click to browse</p>
+          <p className="text-xs text-ash-500">{multiple ? 'Multiple files supported' : 'One file at a time'}</p>
         </div>
       )}
     </label>
@@ -331,7 +331,7 @@ function FileDropzone({
 
 export default function ImportPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading…</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-ash-400">Loading…</div>}>
       <ImportPageInner />
     </Suspense>
   );

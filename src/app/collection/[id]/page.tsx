@@ -261,14 +261,14 @@ export default function CollectionCardDetailPage() {
   }
 
   if (loading) {
-    return <p className="text-slate-600">Loading card...</p>;
+    return <p className="text-ash-300">Loading card...</p>;
   }
 
   if (error && !card) {
     return (
       <section className="space-y-4">
         <p className="text-rose-600">{error}</p>
-        <Link href="/collection" className="text-brand-600 hover:underline">
+        <Link href="/collection" className="text-brand-500 hover:underline">
           Back to collection
         </Link>
       </section>
@@ -289,13 +289,13 @@ export default function CollectionCardDetailPage() {
 
   return (
     <section className="space-y-8">
-      <Link href="/collection" className="text-sm font-medium text-brand-600 hover:underline">
+      <Link href="/collection" className="text-sm font-medium text-brand-500 hover:underline">
         Back to collection
       </Link>
 
       {editing ? (
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft md:p-8">
-          <h1 className="mb-6 text-2xl font-semibold tracking-tight text-slate-950">Edit card details</h1>
+        <div className="rounded border border-ink-700 bg-ink-900 p-6  md:p-8">
+          <h1 className="mb-6 text-2xl font-semibold tracking-tight text-ash-50">Edit card details</h1>
           <CollectionCardForm
             initialValues={detailToFormValues(card)}
             onSubmit={handleEditSubmit}
@@ -312,8 +312,8 @@ export default function CollectionCardDetailPage() {
         <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
           <div className="space-y-4">
             <CollectionPhotoCarousel photos={card.photos} alt={player} />
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Photos</p>
+            <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Photos</p>
               <div className="mt-3 space-y-4">
                 <CollectionPhotoPicker
                   existingPhotos={card.photos}
@@ -339,7 +339,7 @@ export default function CollectionCardDetailPage() {
                     type="button"
                     onClick={handleAddPhotos}
                     disabled={photoUploading}
-                    className="inline-flex items-center justify-center rounded-full bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
                   >
                     {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Upload Selected Photos'}
                   </button>
@@ -350,28 +350,28 @@ export default function CollectionCardDetailPage() {
 
           <div className="space-y-6">
             <div>
-              <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-slate-950">
+              <h1 className="text-4xl font-semibold tracking-tight text-ash-50">
                 {player}
               </h1>
-              <p className="mt-2 text-lg text-slate-600">{formatPlayerYearLine(player, card.year)}</p>
-              {setName ? <p className="mt-1 text-slate-500">{setName}</p> : null}
+              <p className="mt-2 text-lg text-ash-300">{formatPlayerYearLine(player, card.year)}</p>
+              {setName ? <p className="mt-1 text-ash-400">{setName}</p> : null}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Grade</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{badge}</p>
+            <div className="rounded border border-ink-700 bg-ink-800 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Grade</p>
+              <p className="mt-2 text-2xl font-semibold text-ash-50">{badge}</p>
               {card.gradingCompany && card.conditionType === 'graded' ? (
-                <p className="text-sm text-slate-600">{card.gradingCompany}</p>
+                <p className="text-sm text-ash-300">{card.gradingCompany}</p>
               ) : null}
               {card.certNumber ? (
-                <p className="mt-1 text-sm text-slate-600">Cert #{card.certNumber}</p>
+                <p className="mt-1 text-sm text-ash-300">Cert #{card.certNumber}</p>
               ) : null}
               {certUrl ? (
                 <a
                   href={certUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-500 hover:underline"
                 >
                   View cert lookup <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -379,9 +379,9 @@ export default function CollectionCardDetailPage() {
             </div>
 
             {(purchasePriceLabel || card.purchaseDate || card.purchaseSource) && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Purchase</p>
-                <p className="mt-2 text-sm text-slate-700">
+              <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Purchase</p>
+                <p className="mt-2 text-sm text-ash-200">
                   {[purchasePriceLabel, formatDateLabel(card.purchaseDate), card.purchaseSource]
                     .filter(Boolean)
                     .join(' · ')}
@@ -389,15 +389,15 @@ export default function CollectionCardDetailPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
+            <div className="rounded border border-ink-700 bg-ink-900 p-4 ">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Current value</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-950">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Current value</p>
+                  <p className="mt-2 text-2xl font-semibold text-ash-50">
                     {currentValueLabel ?? 'Not set'}
                   </p>
                   {card.valueUpdatedAt ? (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ash-400">
                       Last updated {formatDateLabel(card.valueUpdatedAt)}
                     </p>
                   ) : null}
@@ -406,7 +406,7 @@ export default function CollectionCardDetailPage() {
                   <button
                     type="button"
                     onClick={() => setValueEditing(true)}
-                    className="text-sm font-medium text-brand-600 hover:underline"
+                    className="text-sm font-medium text-brand-500 hover:underline"
                   >
                     Update Value
                   </button>
@@ -420,13 +420,13 @@ export default function CollectionCardDetailPage() {
                     step="0.01"
                     value={valueInput}
                     onChange={(e) => setValueInput(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                    className="flex-1 rounded border border-ink-700 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     type="button"
                     onClick={saveValue}
                     disabled={valueSaving}
-                    className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                    className="rounded bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-400 disabled:opacity-60"
                   >
                     {valueSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
                   </button>
@@ -436,7 +436,7 @@ export default function CollectionCardDetailPage() {
                       setValueEditing(false);
                       setValueInput(card.currentValue != null ? String(card.currentValue) : '');
                     }}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"
+                    className="rounded border border-ink-700 px-4 py-2 text-sm text-ash-300"
                   >
                     Cancel
                   </button>
@@ -453,24 +453,24 @@ export default function CollectionCardDetailPage() {
               ) : null}
             </div>
 
-            <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Notes</span>
+            <label className="block rounded border border-ink-700 bg-ink-800 p-4">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Notes</span>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 onBlur={saveNotes}
                 rows={4}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
+                className="mt-2 w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500"
               />
-              {notesSaving ? <p className="mt-1 text-xs text-slate-400">Saving...</p> : null}
+              {notesSaving ? <p className="mt-1 text-xs text-ash-500">Saving...</p> : null}
             </label>
 
-            <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-soft">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Provenance</p>
+            <div className="space-y-2 rounded border border-ink-700 bg-ink-900 p-4 text-sm text-ash-300 ">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ash-400">Provenance</p>
               {card.scanSession ? (
                 <p>
                   Added via{' '}
-                  <Link href={`/scanner/history/${card.scanId}` as Route} className="text-brand-600 hover:underline">
+                  <Link href={`/scanner/history/${card.scanId}` as Route} className="text-brand-500 hover:underline">
                     scanner scan
                   </Link>{' '}
                   on {formatDateLabel(card.scanSession.createdAt)}
@@ -479,7 +479,7 @@ export default function CollectionCardDetailPage() {
               {card.gradeSession ? (
                 <p>
                   Graded with{' '}
-                  <Link href="/grader" className="text-brand-600 hover:underline">
+                  <Link href="/grader" className="text-brand-500 hover:underline">
                     AI grader
                   </Link>{' '}
                   on {formatDateLabel(card.gradeSession.createdAt)}
@@ -500,14 +500,14 @@ export default function CollectionCardDetailPage() {
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded border border-ink-700 bg-ink-900 px-4 py-2 text-sm font-medium text-ash-200 hover:bg-ink-800"
               >
                 <Pencil className="h-4 w-4" /> Edit Details
               </button>
               <button
                 type="button"
                 onClick={() => setDeleteOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
+                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-900"
               >
                 <Trash2 className="h-4 w-4" /> Delete
               </button>
@@ -515,7 +515,7 @@ export default function CollectionCardDetailPage() {
                 type="button"
                 onClick={handleAddToWantList}
                 disabled={wantLoading}
-                className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-900/20 px-4 py-2 text-sm font-medium text-brand-500 hover:bg-brand-100 disabled:opacity-60"
               >
                 {wantLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Add to Want List
@@ -528,15 +528,15 @@ export default function CollectionCardDetailPage() {
       )}
 
       {deleteOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-soft">
-            <h2 className="text-lg font-semibold text-slate-950">Delete this card?</h2>
-            <p className="mt-2 text-sm text-slate-600">This cannot be undone.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/50 p-4">
+          <div className="w-full max-w-md rounded border border-ink-700 bg-ink-900 p-6 ">
+            <h2 className="text-lg font-semibold text-ash-50">Delete this card?</h2>
+            <p className="mt-2 text-sm text-ash-300">This cannot be undone.</p>
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteOpen(false)}
-                className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700"
+                className="flex-1 rounded border border-ink-700 px-4 py-2 text-sm font-medium text-ash-200"
               >
                 Cancel
               </button>
