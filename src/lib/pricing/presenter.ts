@@ -13,6 +13,14 @@ export type PricingPanelStatus =
   | 'needs_review'
   | 'error';
 
+export type PricingComparableRow = {
+  title: string;
+  salePriceLabel: string;
+  saleDateLabel: string | null;
+  itemUrl: string | null;
+  gradeLabel: string | null;
+};
+
 export type PricingPanelData = {
   configured: boolean;
   status: PricingPanelStatus;
@@ -22,16 +30,29 @@ export type PricingPanelData = {
   confidenceLabel: string | null;
   valuationEligible: boolean;
   lastUpdated: string | null;
-  comparables: {
-    title: string;
-    salePriceLabel: string;
-    saleDateLabel: string | null;
-    itemUrl: string | null;
-    gradeLabel: string | null;
-  }[];
+  comparables: PricingComparableRow[];
   message?: string;
   canRefresh?: boolean;
   compsScopeNote?: string | null;
+  minSalePrice?: number | null;
+  maxSalePrice?: number | null;
+  activeTier?: string | null;
+  filterOptions?: {
+    gradingCompanies: string[];
+    gradesByCompany: Record<string, number[]>;
+    parallels: { id: string; name: string }[];
+  };
+  appliedFilters?: {
+    gradingCompany?: string | null;
+    grade?: number | null;
+    parallelId?: string | null;
+  };
+  slabDefaults?: {
+    gradingCompany?: string | null;
+    grade?: number | null;
+    parallelId?: string | null;
+  };
+  strictEligible?: boolean;
 };
 
 export function formatPricingDate(value: string | null | undefined) {
@@ -98,6 +119,8 @@ export function mapPricingPayload(input: {
     null;
 
   const hasDisplayMedian = sampleSize != null && sampleSize > 0 && median != null;
+  const minSale = snapshot?.min_sale_price != null ? Number(snapshot.min_sale_price) : null;
+  const maxSale = snapshot?.max_sale_price != null ? Number(snapshot.max_sale_price) : null;
 
   return {
     configured: input.configured,
@@ -112,6 +135,9 @@ export function mapPricingPayload(input: {
     message: input.message,
     canRefresh: input.canRefresh,
     compsScopeNote: scopeFromSnapshot ?? input.compsScopeNote ?? null,
+    minSalePrice: minSale,
+    maxSalePrice: maxSale,
+    activeTier: (snapshot?.active_tier as string | null) ?? null,
   };
 }
 

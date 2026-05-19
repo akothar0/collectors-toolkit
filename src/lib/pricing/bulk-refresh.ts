@@ -5,8 +5,8 @@ const BULK_CHUNK_SIZE = 25;
 
 /** Cap per cron run to stay within Hobby function time and CardSight free-tier quota. */
 export function getCronCardLimit() {
-  const parsed = Number.parseInt(process.env.PRICING_CRON_CARD_LIMIT ?? '40', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 40;
+  const parsed = Number.parseInt(process.env.PRICING_CRON_CARD_LIMIT ?? '15', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15;
 }
 
 export async function refreshOwnedCollectionPricingForUser(userId: string) {

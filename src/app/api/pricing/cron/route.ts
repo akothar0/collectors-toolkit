@@ -1,5 +1,7 @@
 import { isCardSightConfigured } from '@/lib/cardsight/client';
 import { refreshAllOwnedCollectionPricing } from '@/lib/pricing/bulk-refresh';
+import { purgeOldMarketObservations } from '@/lib/pricing/market-observations';
+import { getMonthlyMarketCacheFetchCount, getPricingMonthlyCap } from '@/lib/pricing/pricing-quota';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -27,8 +29,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    await purgeOldMarketObservations();
     const summary = await refreshAllOwnedCollectionPricing();
-    return NextResponse.json({ success: true, summary });
+    const monthlyUsed = await getMonthlyMarketCacheFetchCount();
+    return NextResponse.json({
+      success: true,
+      summary,
+      quota: { used: monthlyUsed, cap: getPricingMonthlyCap() },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Cron pricing refresh failed.' },

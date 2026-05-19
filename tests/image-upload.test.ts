@@ -15,7 +15,7 @@ test('ImageUpload renders a native label-driven file input for reliable picker a
 
   assert.match(html, /type="file"/);
   assert.match(html, /capture="environment"/);
-  assert.match(html, /aria-label="Upload slab photo"/);
+  assert.match(html, /aria-label="Upload photo"/);
   assert.match(html, /<label /);
   assert.match(html, /class="sr-only"/);
   assert.doesNotMatch(html, /class="hidden"/);
