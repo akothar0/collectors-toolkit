@@ -1,6 +1,6 @@
 # Collectors Toolkit — Product Spec & Roadmap
 
-> This is the source-of-truth product document. The weekly implementation prompts are in `collectors_toolkit_weekly_prompts.md`.  
+> This is the source-of-truth product document.  
 > **Implementation reference for agents:** [`AGENTS.md`](AGENTS.md) · [`README.md`](README.md)
 
 ---

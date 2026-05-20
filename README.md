@@ -4,7 +4,7 @@ A Next.js app for sports card collectors: scan graded slabs (PSA, BGS, SGC), AI-
 
 **For AI agents:** see [`AGENTS.md`](AGENTS.md) for conventions, migrations, and module map.
 
-**Product docs:** [`collectors_toolkit_product_spec.md`](collectors_toolkit_product_spec.md) · [`collectors_toolkit_weekly_prompts.md`](collectors_toolkit_weekly_prompts.md) · [`collectors_toolkit_PRD.md`](collectors_toolkit_PRD.md)
+**Product docs:** [`collectors_toolkit_product_spec.md`](collectors_toolkit_product_spec.md) · [`collectors_toolkit_PRD.md`](collectors_toolkit_PRD.md)
 
 ## Tech stack
 

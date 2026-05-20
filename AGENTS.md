@@ -6,7 +6,7 @@ Guidance for AI coding agents (Cursor, Codex, Claude Code, etc.) working in this
 
 Next.js 15 App Router app for sports card collectors: graded slab scanner, raw-card AI grader, collection manager, purchase import, portfolio dashboard, set tracker, and want list. Auth via **Clerk**; data via **Supabase** (Postgres + Storage) using the **service role** on the server.
 
-**Product docs:** [`collectors_toolkit_product_spec.md`](collectors_toolkit_product_spec.md) (roadmap) · [`collectors_toolkit_weekly_prompts.md`](collectors_toolkit_weekly_prompts.md) (build prompts) · [`collectors_toolkit_PRD.md`](collectors_toolkit_PRD.md) (requirements)
+**Product docs:** [`collectors_toolkit_product_spec.md`](collectors_toolkit_product_spec.md) (roadmap) · [`collectors_toolkit_PRD.md`](collectors_toolkit_PRD.md) (requirements)
 
 ## Conventions (follow existing code)
 
@@ -32,6 +32,21 @@ Next.js 15 App Router app for sports card collectors: graded slab scanner, raw-c
 - **RLS:** Migrations enable **deny-all** policies on user tables (`anon` / `authenticated`). The app relies on the service role + Clerk; do not expose `SUPABASE_SECRET_KEY` to the client.
 - **API routes:** Always check `auth()`; return 401 when missing.
 - **Do not** add permissive RLS policies without an explicit product decision.
+- **Client Supabase:** Use `createServiceClient()` on the server only. Do not query user tables from the browser via `createClient()` / the publishable key.
+
+### New table RLS checklist (required)
+
+Every migration that creates a `public` table must include RLS in the **same file** (see [`004_rls.sql`](supabase/migrations/004_rls.sql) or inline policies in [`013_price_history_alerts.sql`](supabase/migrations/013_price_history_alerts.sql)):
+
+1. `alter table <name> enable row level security;`
+2. `create policy "deny_anon_<name>" on <name> for all to anon using (false);`
+3. `create policy "deny_authenticated_<name>" on <name> for all to authenticated using (false);`
+4. If the migration only adds tables (e.g. pricing), add a companion `*_rls.sql` in the same PR and apply immediately after the DDL migration.
+5. After `npx supabase db push`, run Supabase MCP `get_advisors` with `type: "security"` (or Dashboard → Database → Security Advisor) and confirm no `rls_disabled_in_public` / `sensitive_columns_exposed` findings.
+
+**Exception:** `cards` is shared catalog reference data with read-only policies for `anon` / `authenticated` in `004_rls.sql` — do not copy that pattern to user-owned tables.
+
+**Clerk note:** Do not add `authenticated` policies that use `auth.uid()` until Clerk JWT is wired to Supabase Auth; until then, deny-all for both roles is correct.
 
 ## Database migrations
 
